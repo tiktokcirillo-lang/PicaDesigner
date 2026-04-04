@@ -1,0 +1,1483 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARIA — AI Design Studio</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&family=DM+Mono:wght@400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy: #050f1e;
+    --navy-2: #0a1628;
+    --navy-3: #0f2040;
+    --navy-4: #162a50;
+    --gold: #c9a84c;
+    --gold-light: #e2c47a;
+    --gold-dim: rgba(201,168,76,0.15);
+    --gold-border: rgba(201,168,76,0.25);
+    --cream: #f4ede0;
+    --cream-dim: rgba(244,237,224,0.6);
+    --cream-muted: rgba(244,237,224,0.35);
+    --white: #ffffff;
+    --font-display: 'Cormorant Garamond', serif;
+    --font-body: 'DM Sans', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    height: 100%;
+    background: var(--navy);
+    color: var(--cream);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.6;
+    overflow: hidden;
+  }
+
+  /* LAYOUT */
+  .app {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    grid-template-rows: 56px 1fr;
+    height: 100vh;
+  }
+
+  /* TOPBAR */
+  .topbar {
+    grid-column: 1 / -1;
+    background: var(--navy-2);
+    border-bottom: 1px solid var(--gold-border);
+    display: flex;
+    align-items: center;
+    padding: 0 24px;
+    gap: 16px;
+    position: relative;
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    color: var(--gold);
+  }
+
+  .logo-sub {
+    font-family: var(--font-body);
+    font-size: 10px;
+    font-weight: 300;
+    letter-spacing: 0.3em;
+    color: var(--cream-muted);
+    text-transform: uppercase;
+    margin-left: 2px;
+    margin-top: -4px;
+  }
+
+  .topbar-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+  }
+
+  .status-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--gold-dim);
+    border: 1px solid var(--gold-border);
+    border-radius: 20px;
+    padding: 4px 14px;
+    font-size: 11px;
+    color: var(--gold);
+    letter-spacing: 0.08em;
+    font-weight: 500;
+  }
+
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  .topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .version-tag {
+    font-size: 10px;
+    color: var(--cream-muted);
+    letter-spacing: 0.15em;
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    background: var(--navy-2);
+    border-right: 1px solid var(--gold-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .sidebar-inner {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-border) transparent;
+  }
+
+  .sidebar-inner::-webkit-scrollbar { width: 4px; }
+  .sidebar-inner::-webkit-scrollbar-track { background: transparent; }
+  .sidebar-inner::-webkit-scrollbar-thumb { background: var(--gold-border); border-radius: 2px; }
+
+  .field-group { margin-bottom: 20px; }
+
+  .field-label {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+    margin-bottom: 8px;
+  }
+
+  .field-label span {
+    color: var(--cream-muted);
+    font-weight: 300;
+    letter-spacing: 0.05em;
+    text-transform: none;
+    font-size: 10px;
+    margin-left: 4px;
+  }
+
+  textarea, select, input[type="text"] {
+    width: 100%;
+    background: var(--navy-3);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 6px;
+    color: var(--cream);
+    font-family: var(--font-body);
+    font-size: 13px;
+    padding: 10px 12px;
+    outline: none;
+    transition: border-color 0.2s;
+    resize: none;
+  }
+
+  textarea:focus, select:focus, input[type="text"]:focus {
+    border-color: var(--gold);
+  }
+
+  textarea {
+    min-height: 200px;
+    line-height: 1.7;
+  }
+
+  select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23c9a84c' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 36px;
+  }
+
+  select option { background: var(--navy-2); }
+
+  /* TOGGLE */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--navy-3);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 6px;
+    padding: 10px 12px;
+  }
+
+  .toggle-label {
+    font-size: 13px;
+    color: var(--cream-dim);
+  }
+
+  .toggle {
+    position: relative;
+    width: 38px;
+    height: 20px;
+    cursor: pointer;
+  }
+
+  .toggle input { display: none; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    background: var(--navy-4);
+    border: 1px solid rgba(201,168,76,0.3);
+    border-radius: 20px;
+    transition: all 0.25s;
+  }
+
+  .toggle input:checked ~ .toggle-track {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 12px;
+    height: 12px;
+    background: var(--cream-muted);
+    border-radius: 50%;
+    transition: all 0.25s;
+  }
+
+  .toggle input:checked ~ .toggle-track .toggle-thumb {
+    left: 21px;
+    background: var(--gold);
+  }
+
+  /* BRAND FIELDS */
+  .brand-fields {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 12px;
+    padding: 14px;
+    background: var(--navy-3);
+    border: 1px solid var(--gold-border);
+    border-radius: 6px;
+  }
+
+  .brand-fields.visible { display: flex; }
+
+  .color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  input[type="color"] {
+    width: 36px;
+    height: 36px;
+    padding: 2px;
+    background: var(--navy-4);
+    border: 1px solid var(--gold-border);
+    border-radius: 4px;
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+
+  .color-hex {
+    flex: 1;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: var(--gold-border);
+    margin: 4px 0 20px;
+  }
+
+  /* GENERATE BUTTON */
+  .generate-btn {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--gold), #a8873a);
+    border: none;
+    border-radius: 6px;
+    color: var(--navy);
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .generate-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(255,255,255,0.1);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .generate-btn:hover::before { opacity: 1; }
+  .generate-btn:active { transform: scale(0.98); }
+  .generate-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .sidebar-footer {
+    padding: 16px 20px;
+    border-top: 1px solid var(--gold-border);
+    background: var(--navy-2);
+  }
+
+  /* SAVED VERSIONS */
+  .saved-versions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .saved-version-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--navy-3);
+    border: 1px solid rgba(201,168,76,0.2);
+    border-radius: 6px;
+    padding: 8px 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .saved-version-item:hover {
+    border-color: var(--gold);
+  }
+  .saved-version-name {
+    font-size: 12px;
+    color: var(--cream);
+  }
+  .saved-version-date {
+    font-size: 10px;
+    color: var(--cream-muted);
+  }
+
+  /* IMAGE UPLOAD */
+  .upload-btn {
+    width: 100%;
+    padding: 10px;
+    background: var(--navy-3);
+    border: 1px dashed rgba(201,168,76,0.5);
+    color: var(--cream);
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .upload-btn:hover {
+    border-color: var(--gold);
+    background: rgba(201,168,76,0.1);
+  }
+  .image-preview {
+    margin-top: 10px;
+    position: relative;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid var(--navy-3);
+  }
+  .image-preview img {
+    width: 100%;
+    display: block;
+  }
+  .remove-img-btn {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(0,0,0,0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+  }
+  .remove-img-btn:hover {
+    background: var(--gold);
+  }
+
+  /* MAIN CONTENT */
+  .main {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--navy);
+  }
+
+  /* EMPTY STATE */
+  .empty-state {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 40px;
+    text-align: center;
+  }
+
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    border: 1px solid var(--gold-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 8px;
+  }
+
+  .empty-icon svg { width: 28px; height: 28px; stroke: var(--gold); fill: none; stroke-width: 1.5; }
+
+  .empty-title {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--cream-dim);
+  }
+
+  .empty-sub {
+    font-size: 13px;
+    color: var(--cream-muted);
+    max-width: 340px;
+    line-height: 1.8;
+  }
+
+  .empty-steps {
+    display: flex;
+    gap: 32px;
+    margin-top: 24px;
+  }
+
+  .empty-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .step-num {
+    width: 28px;
+    height: 28px;
+    border: 1px solid var(--gold-border);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    color: var(--gold);
+    font-family: var(--font-mono);
+  }
+
+  .step-text {
+    font-size: 11px;
+    color: var(--cream-muted);
+    letter-spacing: 0.05em;
+    text-align: center;
+    max-width: 80px;
+  }
+
+  /* OUTPUT AREA */
+  .output-area {
+    flex: 1;
+    overflow-y: auto;
+    padding: 32px 40px;
+    display: none;
+    scrollbar-width: thin;
+    scrollbar-color: var(--gold-border) transparent;
+  }
+
+  .output-area::-webkit-scrollbar { width: 4px; }
+  .output-area::-webkit-scrollbar-track { background: transparent; }
+  .output-area::-webkit-scrollbar-thumb { background: var(--gold-border); border-radius: 2px; }
+
+  .output-area.visible { display: block; }
+
+  /* OUTPUT HEADER */
+  .output-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--gold-border);
+  }
+
+  .output-title {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--cream);
+  }
+
+  .output-meta {
+    font-size: 11px;
+    color: var(--cream-muted);
+    letter-spacing: 0.08em;
+  }
+
+  .copy-all-btn {
+    background: transparent;
+    border: 1px solid var(--gold-border);
+    border-radius: 4px;
+    color: var(--gold);
+    font-family: var(--font-body);
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    padding: 6px 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .copy-all-btn:hover {
+    background: var(--gold-dim);
+  }
+
+  /* OUTPUT SECTIONS */
+  .output-section {
+    margin-bottom: 20px;
+    border: 1px solid var(--gold-border);
+    border-radius: 8px;
+    overflow: hidden;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .section-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 18px;
+    background: var(--navy-3);
+    border-bottom: 1px solid var(--gold-border);
+  }
+
+  .section-emoji {
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .section-name {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .section-content {
+    padding: 18px;
+    font-size: 13px;
+    line-height: 1.85;
+    color: var(--cream-dim);
+    white-space: pre-wrap;
+    font-family: var(--font-body);
+  }
+
+  /* Color swatches */
+  .color-swatches {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 12px;
+  }
+
+  .swatch {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--navy-4);
+    border: 1px solid var(--gold-border);
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--cream);
+  }
+
+  .swatch-dot {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+    border: 1px solid rgba(255,255,255,0.1);
+    flex-shrink: 0;
+  }
+
+  /* LOADING */
+  .loading-state {
+    flex: 1;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 40px;
+  }
+
+  .loading-state.visible { display: flex; }
+
+  .loading-ring {
+    width: 56px;
+    height: 56px;
+    border: 1px solid var(--gold-border);
+    border-top: 2px solid var(--gold);
+    border-radius: 50%;
+    animation: spin 1.2s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 300;
+    font-style: italic;
+    color: var(--cream-dim);
+    animation: breathe 2s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .loading-step {
+    font-size: 11px;
+    color: var(--cream-muted);
+    letter-spacing: 0.1em;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  .loading-step.active {
+    color: var(--gold);
+    opacity: 1;
+  }
+
+  /* GOLD ACCENT LINE */
+  .gold-line {
+    width: 40px;
+    height: 1px;
+    background: var(--gold);
+    opacity: 0.5;
+  }
+
+  /* HISTORY PILLS */
+  .history-bar {
+    padding: 8px 20px;
+    border-bottom: 1px solid var(--gold-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+    background: var(--navy-2);
+  }
+
+  .history-bar::-webkit-scrollbar { display: none; }
+
+  .history-label {
+    font-size: 10px;
+    color: var(--cream-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .history-pill-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: transparent;
+    border: 1px solid var(--gold-border);
+    border-radius: 20px;
+    padding: 2px 6px 2px 12px;
+    transition: all 0.2s;
+  }
+  .history-pill-wrapper:hover, .history-pill-wrapper.active {
+    background: var(--gold-dim);
+    border-color: var(--gold);
+  }
+  .history-pill {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font-size: 11px;
+    color: var(--cream-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+  .history-pill-wrapper:hover .history-pill, .history-pill-wrapper.active .history-pill {
+    color: var(--gold);
+  }
+  .delete-pill-btn {
+    background: transparent;
+    border: none;
+    color: var(--cream-muted);
+    cursor: pointer;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    transition: all 0.2s;
+  }
+  .delete-pill-btn:hover {
+    background: rgba(201,168,76,0.3);
+    color: var(--cream);
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div>
+      <div class="logo">ARIA</div>
+      <div class="logo-sub">AI Design Studio</div>
+    </div>
+    <div class="topbar-center">
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        Sistema ativo · Gemini 2.0
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span class="version-tag">v2.0</span>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="sidebar-inner">
+
+      <div class="field-group">
+        <label class="field-label">Texto do Copywriter <span>cole aqui</span></label>
+        <textarea id="copyText" placeholder="Cole o texto que será transformado em design...
+
+Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados financeiros, depoimento de cliente..."></textarea>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Referência Visual ou Arquivo <span>opcional</span></label>
+        <div class="file-upload-container">
+          <input type="file" id="imageUpload" accept="image/png, image/jpeg, image/webp, application/pdf" style="display: none;" onchange="window.handleImageUpload(event)">
+          <button class="upload-btn" onclick="document.getElementById('imageUpload').click()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+            Fazer Upload de Imagem ou PDF
+          </button>
+          <div id="imagePreview" class="image-preview" style="display: none;">
+            <img id="previewImg" src="" alt="Preview" style="display: none;">
+            <div id="pdfPreview" style="display: none; background: var(--navy-2); text-align: center; position: relative;">
+              <div id="pdfFallback" style="padding: 20px; color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 14px;">
+                📄 <span id="pdfName">Documento PDF</span>
+              </div>
+              <canvas id="pdfCanvas" style="display: none; width: 100%; height: auto; display: block;"></canvas>
+            </div>
+            <button class="remove-img-btn" onclick="window.removeImage()">×</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Ferramenta de destino</label>
+        <select id="toolSelect">
+          <option value="Google Slides">Google Slides</option>
+          <option value="PowerPoint">PowerPoint</option>
+          <option value="Canva">Canva</option>
+          <option value="Keynote">Keynote</option>
+          <option value="Figma">Figma</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Identidade visual existente?</label>
+        <div class="toggle-row">
+          <span class="toggle-label">A empresa já tem marca</span>
+          <label class="toggle">
+            <input type="checkbox" id="hasBrand" onchange="toggleBrand()">
+            <div class="toggle-track">
+              <div class="toggle-thumb"></div>
+            </div>
+          </label>
+        </div>
+        <div class="brand-fields" id="brandFields">
+          <div class="field-label" style="margin-bottom:4px;">Cor primária</div>
+          <div class="color-row">
+            <input type="color" id="color1" value="#0A1628" oninput="updateHex('color1','hex1')">
+            <input type="text" id="hex1" class="color-hex" value="#0A1628" placeholder="#000000" oninput="updateColor('hex1','color1')">
+          </div>
+          <div class="field-label" style="margin-bottom:4px;margin-top:8px;">Cor secundária</div>
+          <div class="color-row">
+            <input type="color" id="color2" value="#C9A84C" oninput="updateHex('color2','hex2')">
+            <input type="text" id="hex2" class="color-hex" value="#C9A84C" placeholder="#000000" oninput="updateColor('hex2','color2')">
+          </div>
+          <div class="field-label" style="margin-bottom:4px;margin-top:8px;">Fonte principal <span>opcional</span></div>
+          <input type="text" id="brandFont" placeholder="Ex: Montserrat, Helvetica Neue...">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Tom do projeto</label>
+        <select id="toneSelect">
+          <option value="institucional e premium">Institucional Premium</option>
+          <option value="inovador e tecnológico">Inovador & Tech</option>
+          <option value="editorial e sofisticado">Editorial Sofisticado</option>
+          <option value="agressivo e de impacto">Agressivo & Impacto</option>
+          <option value="humano e emocional">Humano & Emocional</option>
+          <option value="minimalista e luxuoso">Minimalista Luxuoso</option>
+        </select>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="field-group">
+        <label class="field-label">Versões Salvas</label>
+        <div id="savedVersionsList" class="saved-versions-list">
+          <span style="font-size:11px;color:var(--cream-muted)">Nenhuma versão salva</span>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="sidebar-footer">
+      <button class="generate-btn" id="generateBtn" onclick="generate()">
+        Gerar Design
+      </button>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <!-- HISTORY BAR -->
+    <div class="history-bar" id="historyBar">
+      <span class="history-label">Projetos</span>
+      <span style="font-size:11px;color:var(--cream-muted)">Nenhum projeto ainda</span>
+    </div>
+
+    <!-- EMPTY STATE -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">
+        <svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+      </div>
+      <div class="gold-line"></div>
+      <div class="empty-title">Aguardando o texto do copywriter</div>
+      <div class="empty-sub">Cole o texto na barra lateral, configure o projeto e deixe a ARIA transformar palavras em design de alto padrão.</div>
+      <div class="empty-steps">
+        <div class="empty-step">
+          <div class="step-num">01</div>
+          <div class="step-text">Cole o texto</div>
+        </div>
+        <div class="empty-step">
+          <div class="step-num">02</div>
+          <div class="step-text">Configure o projeto</div>
+        </div>
+        <div class="empty-step">
+          <div class="step-num">03</div>
+          <div class="step-text">Gere o design</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- LOADING STATE -->
+    <div class="loading-state" id="loadingState">
+      <div class="loading-ring"></div>
+      <div class="loading-text">ARIA está criando...</div>
+      <div class="loading-steps">
+        <div class="loading-step" id="ls1">Interpretando o texto e o tom do projeto</div>
+        <div class="loading-step" id="ls2">Definindo identidade visual e paleta</div>
+        <div class="loading-step" id="ls3">Estruturando layout slide a slide</div>
+        <div class="loading-step" id="ls4">Aplicando detalhes de luxo</div>
+      </div>
+    </div>
+
+    <!-- OUTPUT AREA -->
+    <div class="output-area" id="outputArea">
+      <div class="output-header">
+        <div>
+          <div class="output-title" id="outputTitle">Especificação Visual</div>
+          <div class="output-meta" id="outputMeta"></div>
+        </div>
+        <div style="display: flex; gap: 10px;">
+          <button class="copy-all-btn" onclick="window.saveVersion()">Salvar Versão</button>
+          <button class="copy-all-btn" onclick="window.copyOutput()">Copiar tudo</button>
+        </div>
+      </div>
+      <div id="outputSections"></div>
+    </div>
+  </main>
+
+</div>
+
+<script type="module">
+  import { GoogleGenAI } from "@google/genai";
+
+  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+
+  window.projects = JSON.parse(localStorage.getItem('aria_projects') || '[]');
+  window.savedVersions = [];
+  window.currentOutput = '';
+  window.loadingInterval = null;
+  window.uploadedImage = null;
+
+  window.handleImageUpload = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(e) {
+      window.uploadedImage = {
+        data: e.target.result.split(',')[1], // Base64 data
+        mimeType: file.type,
+        name: file.name
+      };
+      
+      document.getElementById('imagePreview').style.display = 'block';
+      if (file.type === 'application/pdf') {
+        document.getElementById('previewImg').style.display = 'none';
+        document.getElementById('pdfPreview').style.display = 'block';
+        document.getElementById('pdfName').textContent = file.name;
+        document.getElementById('pdfFallback').style.display = 'block';
+        document.getElementById('pdfCanvas').style.display = 'none';
+
+        try {
+          const pdfData = atob(window.uploadedImage.data);
+          const uint8Array = new Uint8Array(pdfData.length);
+          for (let i = 0; i < pdfData.length; i++) {
+            uint8Array[i] = pdfData.charCodeAt(i);
+          }
+          const loadingTask = pdfjsLib.getDocument({data: uint8Array});
+          const pdf = await loadingTask.promise;
+          const page = await pdf.getPage(1);
+          
+          const scale = 1.5;
+          const viewport = page.getViewport({scale: scale});
+          const canvas = document.getElementById('pdfCanvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
+          
+          const renderContext = {
+            canvasContext: context,
+            viewport: viewport
+          };
+          await page.render(renderContext).promise;
+          
+          document.getElementById('pdfFallback').style.display = 'none';
+          canvas.style.display = 'block';
+        } catch (err) {
+          console.error('Erro ao renderizar PDF:', err);
+          // Fallback to just showing the name is already handled
+        }
+      } else {
+        document.getElementById('previewImg').src = e.target.result;
+        document.getElementById('previewImg').style.display = 'block';
+        document.getElementById('pdfPreview').style.display = 'none';
+      }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  window.removeImage = function() {
+    window.uploadedImage = null;
+    document.getElementById('imageUpload').value = '';
+    document.getElementById('imagePreview').style.display = 'none';
+    document.getElementById('previewImg').src = '';
+    const canvas = document.getElementById('pdfCanvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }
+
+  window.toggleBrand = function() {
+    const checked = document.getElementById('hasBrand').checked;
+    document.getElementById('brandFields').classList.toggle('visible', checked);
+  }
+
+  window.updateHex = function(colorId, hexId) {
+    document.getElementById(hexId).value = document.getElementById(colorId).value.toUpperCase();
+  }
+
+  window.updateColor = function(hexId, colorId) {
+    const val = document.getElementById(hexId).value;
+    if (/^#[0-9A-Fa-f]{6}$/.test(val)) {
+      document.getElementById(colorId).value = val;
+    }
+  }
+
+  window.showState = function(state) {
+    document.getElementById('emptyState').style.display = state === 'empty' ? 'flex' : 'none';
+    document.getElementById('loadingState').classList.toggle('visible', state === 'loading');
+    document.getElementById('outputArea').classList.toggle('visible', state === 'output');
+  }
+
+  window.animateLoadingSteps = function() {
+    const steps = ['ls1','ls2','ls3','ls4'];
+    let i = 0;
+    steps.forEach(s => document.getElementById(s).classList.remove('active'));
+    window.loadingInterval = setInterval(() => {
+      steps.forEach(s => document.getElementById(s).classList.remove('active'));
+      if (i < steps.length) {
+        document.getElementById(steps[i]).classList.add('active');
+        i++;
+      } else {
+        i = 0;
+      }
+    }, 1800);
+  }
+
+  window.buildPrompt = function(text, tool, hasBrand, color1, color2, font, tone, hasImage) {
+    let brandContext = hasBrand
+      ? `A empresa JÁ POSSUI identidade visual. Respeite e expanda esta identidade:\n- Cor primária: ${color1}\n- Cor secundária: ${color2}\n${font ? `- Fonte: ${font}` : ''}\nAdapte a paleta e tipografia mantendo coerência com estes elementos.`
+      : `A empresa NÃO possui identidade visual. Crie uma identidade completa do zero com total autonomia.`;
+
+    let imageContext = hasImage
+      ? `\nARQUIVO DE REFERÊNCIA FORNECIDO (Imagem ou PDF):\nO usuário enviou um design/documento de referência. Sua tarefa é ANALISAR este material, MELHORÁ-LO significativamente elevando-o ao padrão ARIA de luxo e sofisticação, e SEGUIR ESTRITAMENTE a copy (texto) presente no arquivo original (ou fornecida no campo de texto). A estrutura e a mensagem devem ser mantidas, mas a execução visual deve ser completamente reimaginada para um nível superior. Se for um documento, extraia todo o texto relevante para usar como base.\n`
+      : ``;
+
+    let iconRecommendation = "";
+    switch(tone) {
+      case "institucional e premium":
+        iconRecommendation = "-> RECOMENDAÇÃO OBRIGATÓRIA: Use 'Streamline Icons' no estilo 'filled' ou 'regular' para transmitir solidez e confiança institucional.";
+        break;
+      case "inovador e tecnológico":
+        iconRecommendation = "-> RECOMENDAÇÃO OBRIGATÓRIA: Use 'Phosphor Icons' no estilo 'outline' ou 'duotone' para um visual limpo, moderno e tech.";
+        break;
+      case "editorial e sofisticado":
+        iconRecommendation = "-> RECOMENDAÇÃO OBRIGATÓRIA: Use 'Feather Icons' ou 'Phosphor (Thin)' no estilo 'outline' para máxima elegância e minimalismo.";
+        break;
+      case "agressivo e de impacto":
+        iconRecommendation = "-> RECOMENDAÇÃO OBRIGATÓRIA: Use 'Heroicons' no estilo 'solid' ou 'Phosphor (Fill)' para peso visual, contraste e força.";
+        break;
+      case "humano e emocional":
+        iconRecommendation = "-> RECOMENDAÇÃO OBRIGATÓRIA: Use 'Phosphor Icons' no estilo 'rounded' ou 'regular' para uma estética acessível, amigável e empática.";
+        break;
+      case "minimalista e luxuoso":
+        iconRecommendation = "-> RECOMENDAÇÃO OBRIGATÓRIA: Use 'Feather Icons' no estilo 'outline' com traços finos para um visual extremamente limpo e exclusivo.";
+        break;
+    }
+
+    return `Você é ARIA, designer sênior de altíssimo padrão especializada em apresentações corporativas de luxo.
+
+CONTEXTO DO PROJETO:
+- Ferramenta de destino: ${tool}
+- Tom desejado: ${tone}
+- ${brandContext}
+${imageContext}
+TEXTO DO COPYWRITER:
+"""
+${text || "Nenhum texto fornecido. Extraia e utilize o texto da imagem de referência."}
+"""
+
+PROTOCOLO EDITORIAL:
+1. Analise a carga textual. Se for extensa, proponha divisão em múltiplos slides.
+2. Identifique hierarquia: TÍTULO | SUBTÍTULO | CORPO | DADO | CTA
+3. Aplique regras de densidade por tipo de slide.
+
+Agora gere a especificação visual COMPLETA e DETALHADA, estruturada EXATAMENTE assim:
+
+🎨 CONCEITO VISUAL
+[Descreva a ideia central estética, o feeling e a direção criativa do projeto]
+
+🖋 TIPOGRAFIA
+[Liste as 2 famílias tipográficas escolhidas, com escala de uso, tamanhos em pt, pesos e letter-spacing para cada elemento]
+
+🎨 PALETA DE CORES
+[Liste as 3 cores com códigos HEX exatos, nome e função de cada uma. Formato: NOME: #HEXCODE — função]
+
+🖼 IMAGENS
+[Para cada slide indique: banco de imagem + termo de busca em inglês entre aspas + composição ideal + tratamento (duotone/overlay/P&B/máscara/blur) com valores específicos]
+
+🔷 ICONOGRAFIA
+[Biblioteca escolhida, estilo (outline/filled/duotone), tamanho em px, cor na paleta, e ícones específicos para cada slide]
+${iconRecommendation}
+
+📐 LAYOUT SLIDE A SLIDE
+[Para cada slide: número, tipo, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}]
+
+✨ DETALHES DE LUXO
+[Os 3 a 5 elementos ou decisões que elevam este projeto ao próximo nível de sofisticação]
+
+Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especificação deve ser diretamente executável por um designer.`;
+  }
+
+  window.generate = async function() {
+    const text = document.getElementById('copyText').value.trim();
+    if (!text && !window.uploadedImage) {
+      document.getElementById('copyText').style.borderColor = '#c94c4c';
+      setTimeout(() => document.getElementById('copyText').style.borderColor = '', 1500);
+      alert("Por favor, insira o texto do copywriter ou faça upload de uma imagem/PDF de referência.");
+      return;
+    }
+
+    const tool = document.getElementById('toolSelect').value;
+    const hasBrand = document.getElementById('hasBrand').checked;
+    const color1 = document.getElementById('hex1').value;
+    const color2 = document.getElementById('hex2').value;
+    const font = document.getElementById('brandFont').value;
+    const tone = document.getElementById('toneSelect').value;
+
+    document.getElementById('generateBtn').disabled = true;
+    window.showState('loading');
+    window.animateLoadingSteps();
+
+    const prompt = window.buildPrompt(text, tool, hasBrand, color1, color2, font, tone, !!window.uploadedImage);
+
+    try {
+      const parts = [];
+      if (window.uploadedImage) {
+        parts.push({
+          inlineData: {
+            mimeType: window.uploadedImage.mimeType,
+            data: window.uploadedImage.data
+          }
+        });
+      }
+      parts.push({ text: prompt });
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-pro-preview',
+        contents: { parts: parts }
+      });
+
+      const raw = response.text || '';
+      window.currentOutput = raw;
+
+      clearInterval(window.loadingInterval);
+      window.renderOutput(raw, tool, tone);
+
+      // Save to history
+      const projLabel = text ? text.slice(0, 30) + (text.length > 30 ? '…' : '') : 'Refinamento de Design';
+      const proj = {
+        id: Date.now(),
+        label: projLabel,
+        state: {
+          text: text,
+          tool: tool,
+          hasBrand: hasBrand,
+          color1: color1,
+          color2: color2,
+          font: font,
+          tone: tone,
+          raw: raw
+        }
+      };
+      window.projects.push(proj);
+      localStorage.setItem('aria_projects', JSON.stringify(window.projects));
+      window.renderHistory();
+
+    } catch (err) {
+      clearInterval(window.loadingInterval);
+      window.currentOutput = 'Erro ao conectar com a API. Verifique sua conexão e tente novamente.\n\nDetalhes: ' + err.message;
+      window.renderOutput(window.currentOutput, tool, tone);
+    }
+
+    document.getElementById('generateBtn').disabled = false;
+  }
+
+  window.renderOutput = function(raw, tool, tone) {
+    window.showState('output');
+
+    const now = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    document.getElementById('outputTitle').textContent = 'Especificação Visual — ' + tool;
+    document.getElementById('outputMeta').textContent = `Gerado às ${now} · Tom: ${tone}`;
+
+    const sectionDefs = [
+      { emoji: '🎨', key: 'CONCEITO VISUAL', label: 'Conceito Visual' },
+      { emoji: '🖋', key: 'TIPOGRAFIA', label: 'Tipografia' },
+      { emoji: '🎨', key: 'PALETA DE CORES', label: 'Paleta de Cores' },
+      { emoji: '🖼', key: 'IMAGENS', label: 'Imagens' },
+      { emoji: '🔷', key: 'ICONOGRAFIA', label: 'Iconografia' },
+      { emoji: '📐', key: 'LAYOUT SLIDE A SLIDE', label: 'Layout Slide a Slide' },
+      { emoji: '✨', key: 'DETALHES DE LUXO', label: 'Detalhes de Luxo' }
+    ];
+
+    const container = document.getElementById('outputSections');
+    container.innerHTML = '';
+
+    // Parse sections
+    const parsed = window.parseOutput(raw, sectionDefs);
+
+    parsed.forEach((sec, i) => {
+      const div = document.createElement('div');
+      div.className = 'output-section';
+      div.style.animationDelay = (i * 0.07) + 's';
+
+      let contentHtml = `<div class="section-content">${window.escapeHtml(sec.content)}</div>`;
+
+      // Extract and render color swatches for palette section
+      if (sec.key === 'PALETA DE CORES') {
+        const hexMatches = [...sec.content.matchAll(/#([A-Fa-f0-9]{6})\b/g)];
+        if (hexMatches.length > 0) {
+          const swatches = hexMatches.map(m => `
+            <div class="swatch">
+              <div class="swatch-dot" style="background:#${m[1]}"></div>
+              #${m[1].toUpperCase()}
+            </div>`).join('');
+          contentHtml += `<div class="section-content" style="padding-top:0"><div class="color-swatches">${swatches}</div></div>`;
+        }
+      }
+
+      div.innerHTML = `
+        <div class="section-head">
+          <span class="section-emoji">${sec.emoji}</span>
+          <span class="section-name">${sec.label}</span>
+        </div>
+        ${contentHtml}
+      `;
+      container.appendChild(div);
+    });
+
+    if (parsed.length === 0) {
+      container.innerHTML = `<div class="output-section"><div class="section-content">${window.escapeHtml(raw)}</div></div>`;
+    }
+  }
+
+  window.parseOutput = function(raw, defs) {
+    const result = [];
+    const lines = raw.split('\n');
+    let current = null;
+    let contentLines = [];
+
+    function flush() {
+      if (current) {
+        result.push({ ...current, content: contentLines.join('\n').trim() });
+        current = null;
+        contentLines = [];
+      }
+    }
+
+    lines.forEach(line => {
+      const match = defs.find(d => line.includes(d.key));
+      if (match) {
+        flush();
+        current = match;
+      } else if (current) {
+        contentLines.push(line);
+      }
+    });
+    flush();
+
+    // If nothing parsed, return single block
+    if (result.length === 0 && raw.trim()) {
+      return [{ emoji: '✦', key: 'OUTPUT', label: 'Especificação Gerada', content: raw }];
+    }
+
+    return result;
+  }
+
+  window.escapeHtml = function(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  window.saveVersion = function() {
+    if (!window.currentOutput) return;
+    const name = prompt("Nome para esta versão:", "Versão " + (window.savedVersions.length + 1));
+    if (!name) return;
+
+    const version = {
+      id: Date.now(),
+      name: name,
+      date: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      state: {
+        text: document.getElementById('copyText').value,
+        tool: document.getElementById('toolSelect').value,
+        hasBrand: document.getElementById('hasBrand').checked,
+        color1: document.getElementById('hex1').value,
+        color2: document.getElementById('hex2').value,
+        font: document.getElementById('brandFont').value,
+        tone: document.getElementById('toneSelect').value,
+        raw: window.currentOutput
+      }
+    };
+    window.savedVersions.push(version);
+    window.renderSavedVersions();
+  }
+
+  window.revertVersion = function(id) {
+    const version = window.savedVersions.find(v => v.id === id);
+    if (!version) return;
+
+    // Restore inputs
+    document.getElementById('copyText').value = version.state.text;
+    document.getElementById('toolSelect').value = version.state.tool;
+    document.getElementById('hasBrand').checked = version.state.hasBrand;
+    window.toggleBrand();
+    document.getElementById('hex1').value = version.state.color1;
+    document.getElementById('color1').value = version.state.color1;
+    document.getElementById('hex2').value = version.state.color2;
+    document.getElementById('color2').value = version.state.color2;
+    document.getElementById('brandFont').value = version.state.font;
+    document.getElementById('toneSelect').value = version.state.tone;
+
+    // Restore output
+    window.currentOutput = version.state.raw;
+    window.renderOutput(version.state.raw, version.state.tool, version.state.tone);
+  }
+
+  window.renderSavedVersions = function() {
+    const container = document.getElementById('savedVersionsList');
+    if (window.savedVersions.length === 0) {
+      container.innerHTML = `<span style="font-size:11px;color:var(--cream-muted)">Nenhuma versão salva</span>`;
+      return;
+    }
+    container.innerHTML = '';
+    window.savedVersions.forEach(v => {
+      const div = document.createElement('div');
+      div.className = 'saved-version-item';
+      div.onclick = () => window.revertVersion(v.id);
+      div.innerHTML = `
+        <span class="saved-version-name">${window.escapeHtml(v.name)}</span>
+        <span class="saved-version-date">${v.date}</span>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  window.revertProject = function(id) {
+    const p = window.projects.find(x => x.id === id);
+    if (!p) return;
+
+    const state = p.state || {
+      text: p.label,
+      tool: p.tool || 'PowerPoint',
+      hasBrand: false,
+      color1: '#0A1628',
+      color2: '#C9A84C',
+      font: '',
+      tone: 'institucional e premium',
+      raw: p.raw
+    };
+
+    // Restore inputs
+    document.getElementById('copyText').value = state.text;
+    document.getElementById('toolSelect').value = state.tool;
+    document.getElementById('hasBrand').checked = state.hasBrand;
+    window.toggleBrand();
+    document.getElementById('hex1').value = state.color1;
+    document.getElementById('color1').value = state.color1;
+    document.getElementById('hex2').value = state.color2;
+    document.getElementById('color2').value = state.color2;
+    document.getElementById('brandFont').value = state.font;
+    document.getElementById('toneSelect').value = state.tone;
+
+    // Restore output
+    window.currentOutput = state.raw;
+    window.renderOutput(state.raw, state.tool, state.tone);
+
+    // Update active pill
+    document.querySelectorAll('.history-pill-wrapper').forEach(b => b.classList.remove('active'));
+    const pill = document.getElementById('history-pill-' + id);
+    if (pill) pill.classList.add('active');
+  }
+
+  window.deleteProject = function(id) {
+    if (!confirm("Tem certeza que deseja apagar este projeto do histórico?")) return;
+    window.projects = window.projects.filter(p => p.id !== id);
+    localStorage.setItem('aria_projects', JSON.stringify(window.projects));
+    window.renderHistory();
+    
+    // If we deleted the currently active project, we might want to clear the output or just leave it.
+    // Leaving it is fine, but we should remove the active state.
+    const activePill = document.querySelector('.history-pill-wrapper.active');
+    if (!activePill && window.projects.length === 0) {
+      window.showState('empty');
+      document.getElementById('copyText').value = '';
+    }
+  }
+
+  window.renderHistory = function() {
+    const bar = document.getElementById('historyBar');
+    bar.innerHTML = `<span class="history-label">Projetos</span>`;
+    if (window.projects.length === 0) {
+      bar.innerHTML += `<span style="font-size:11px;color:var(--cream-muted)">Nenhum projeto ainda</span>`;
+      return;
+    }
+    window.projects.forEach((p, i) => {
+      const wrapper = document.createElement('div');
+      wrapper.id = 'history-pill-' + p.id;
+      wrapper.className = 'history-pill-wrapper' + (i === window.projects.length - 1 ? ' active' : '');
+      
+      const pill = document.createElement('button');
+      pill.className = 'history-pill';
+      pill.textContent = p.label;
+      pill.onclick = () => window.revertProject(p.id);
+      
+      const delBtn = document.createElement('button');
+      delBtn.className = 'delete-pill-btn';
+      delBtn.innerHTML = '×';
+      delBtn.title = 'Apagar projeto';
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+        window.deleteProject(p.id);
+      };
+
+      wrapper.appendChild(pill);
+      wrapper.appendChild(delBtn);
+      bar.appendChild(wrapper);
+    });
+  }
+
+  window.copyOutput = function() {
+    if (!window.currentOutput) return;
+    navigator.clipboard.writeText(window.currentOutput).then(() => {
+      const btn = document.querySelector('.copy-all-btn');
+      btn.textContent = 'Copiado ✓';
+      setTimeout(() => btn.textContent = 'Copiar tudo', 2000);
+    });
+  }
+
+  // Enter key on textarea: Ctrl+Enter to generate
+  document.getElementById('copyText').addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') window.generate();
+  });
+
+  // Initial render
+  window.renderHistory();
+</script>
+</body>
+</html>
