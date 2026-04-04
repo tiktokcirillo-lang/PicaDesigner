@@ -823,6 +823,15 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       </div>
 
       <div class="field-group">
+        <label class="field-label">Formato do Projeto</label>
+        <select id="formatSelect">
+          <option value="Apresentação">Apresentação (Slides)</option>
+          <option value="Carrossel">Carrossel (Instagram/LinkedIn)</option>
+          <option value="Post Estático">Post Estático (Redes Sociais)</option>
+        </select>
+      </div>
+
+      <div class="field-group">
         <label class="field-label">Ferramenta de destino</label>
         <select id="toolSelect">
           <option value="Google Slides">Google Slides</option>
@@ -1070,7 +1079,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     }, 1800);
   }
 
-  window.buildPrompt = function(text, tool, hasBrand, color1, color2, font, tone, hasImage) {
+  window.buildPrompt = function(text, tool, hasBrand, color1, color2, font, tone, hasImage, format) {
     let brandContext = hasBrand
       ? `A empresa JÁ POSSUI identidade visual. Respeite e expanda esta identidade:\n- Cor primária: ${color1}\n- Cor secundária: ${color2}\n${font ? `- Fonte: ${font}` : ''}\nAdapte a paleta e tipografia mantendo coerência com estes elementos.`
       : `A empresa NÃO possui identidade visual. Crie uma identidade completa do zero com total autonomia.`;
@@ -1101,9 +1110,25 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
         break;
     }
 
-    return `Você é ARIA, designer sênior de altíssimo padrão especializada em apresentações corporativas de luxo.
+    let formatInstructions = "";
+    if (format === "Apresentação") {
+      formatInstructions = `
+📐 LAYOUT SLIDE A SLIDE
+[Para cada slide: número, tipo, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}]`;
+    } else if (format === "Carrossel") {
+      formatInstructions = `
+📐 LAYOUT CARD A CARD (CARROSSEL)
+[Para cada card (máx 10): Função (Capa, Retenção, Conteúdo, CTA), copy principal, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}. Foco em continuidade visual (elementos que vazam de um card para outro) e alta retenção]`;
+    } else if (format === "Post Estático") {
+      formatInstructions = `
+📐 LAYOUT DO POST (PEÇA ÚNICA)
+[Para a peça única: Ponto focal principal (scroll-stopper), grid usado, hierarquia visual (Hook/Título vs Apoio), posicionamento de cada elemento com especificações técnicas para ${tool}]`;
+    }
+
+    return `Você é ARIA, designer sênior de altíssimo padrão especializada em design corporativo e digital de luxo.
 
 CONTEXTO DO PROJETO:
+- Formato do Projeto: ${format}
 - Ferramenta de destino: ${tool}
 - Tom desejado: ${tone}
 - ${brandContext}
@@ -1114,9 +1139,9 @@ ${text || "Nenhum texto fornecido. Extraia e utilize o texto da imagem de refer�
 """
 
 PROTOCOLO EDITORIAL:
-1. Analise a carga textual. Se for extensa, proponha divisão em múltiplos slides.
+1. Analise a carga textual e adapte para o formato escolhido (${format}).
 2. Identifique hierarquia: TÍTULO | SUBTÍTULO | CORPO | DADO | CTA
-3. Aplique regras de densidade por tipo de slide.
+3. Aplique regras de densidade visual adequadas ao formato.
 
 Agora gere a especificação visual COMPLETA e DETALHADA, estruturada EXATAMENTE assim:
 
@@ -1130,14 +1155,12 @@ Agora gere a especificação visual COMPLETA e DETALHADA, estruturada EXATAMENTE
 [Liste as 3 cores com códigos HEX exatos, nome e função de cada uma. Formato: NOME: #HEXCODE — função]
 
 🖼 IMAGENS
-[Para cada slide indique: banco de imagem + termo de busca em inglês entre aspas + composição ideal + tratamento (duotone/overlay/P&B/máscara/blur) com valores específicos]
+[Indique: banco de imagem + termo de busca em inglês entre aspas + composição ideal + tratamento (duotone/overlay/P&B/máscara/blur) com valores específicos]
 
 🔷 ICONOGRAFIA
-[Biblioteca escolhida, estilo (outline/filled/duotone), tamanho em px, cor na paleta, e ícones específicos para cada slide]
+[Biblioteca escolhida, estilo (outline/filled/duotone), tamanho em px, cor na paleta, e ícones específicos]
 ${iconRecommendation}
-
-📐 LAYOUT SLIDE A SLIDE
-[Para cada slide: número, tipo, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}]
+${formatInstructions}
 
 ✨ DETALHES DE LUXO
 [Os 3 a 5 elementos ou decisões que elevam este projeto ao próximo nível de sofisticação]
@@ -1154,6 +1177,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       return;
     }
 
+    const format = document.getElementById('formatSelect').value;
     const tool = document.getElementById('toolSelect').value;
     const hasBrand = document.getElementById('hasBrand').checked;
     const color1 = document.getElementById('hex1').value;
@@ -1165,7 +1189,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.showState('loading');
     window.animateLoadingSteps();
 
-    const prompt = window.buildPrompt(text, tool, hasBrand, color1, color2, font, tone, !!window.uploadedImage);
+    const prompt = window.buildPrompt(text, tool, hasBrand, color1, color2, font, tone, !!window.uploadedImage, format);
 
     try {
       const parts = [];
@@ -1197,6 +1221,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         label: projLabel,
         state: {
           text: text,
+          format: format,
           tool: tool,
           hasBrand: hasBrand,
           color1: color1,
@@ -1384,6 +1409,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
 
     const state = p.state || {
       text: p.label,
+      format: 'Apresentação',
       tool: p.tool || 'PowerPoint',
       hasBrand: false,
       color1: '#0A1628',
@@ -1395,6 +1421,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
 
     // Restore inputs
     document.getElementById('copyText').value = state.text;
+    if (state.format) document.getElementById('formatSelect').value = state.format;
     document.getElementById('toolSelect').value = state.tool;
     document.getElementById('hasBrand').checked = state.hasBrand;
     window.toggleBrand();
