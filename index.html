@@ -767,9 +767,86 @@
     background: rgba(201,168,76,0.3);
     color: var(--cream);
   }
+
+  /* Custom Modal */
+  .modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(5, 15, 30, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+  }
+  .modal-content {
+    background: var(--navy-2);
+    border: 1px solid var(--gold-border);
+    padding: 32px;
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90%;
+    text-align: center;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  }
+  .modal-content h3 {
+    margin-top: 0;
+    color: var(--gold);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 24px;
+    font-weight: 600;
+  }
+  .modal-content p {
+    color: var(--cream);
+    font-size: 15px;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .modal-actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .modal-actions button {
+    padding: 10px 24px;
+    border-radius: 4px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.3s;
+  }
+  .modal-btn-cancel {
+    background: transparent;
+    border: 1px solid var(--gold-border);
+    color: var(--gold);
+  }
+  .modal-btn-cancel:hover {
+    background: rgba(201,168,76,0.1);
+  }
+  .modal-btn-confirm {
+    background: var(--gold);
+    border: 1px solid var(--gold);
+    color: var(--navy);
+  }
+  .modal-btn-confirm:hover {
+    background: var(--gold-light);
+  }
 </style>
 </head>
 <body>
+
+<!-- Custom Modal -->
+<div id="customModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content">
+    <h3 id="modalTitle">Confirmação</h3>
+    <p id="modalMessage">Tem certeza?</p>
+    <div class="modal-actions">
+      <button id="modalCancelBtn" class="modal-btn-cancel">Cancelar</button>
+      <button id="modalConfirmBtn" class="modal-btn-confirm">Confirmar</button>
+    </div>
+  </div>
+</div>
 
 <div class="app">
 
@@ -825,9 +902,15 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       <div class="field-group">
         <label class="field-label">Formato do Projeto</label>
         <select id="formatSelect">
-          <option value="Apresentação">Apresentação (Slides)</option>
-          <option value="Carrossel">Carrossel (Instagram/LinkedIn)</option>
-          <option value="Post Estático">Post Estático (Redes Sociais)</option>
+          <option value="Apresentação (16:9 - 1920x1080)">Apresentação (16:9 - 1920x1080)</option>
+          <option value="Carrossel Vertical (1080x1350)">Carrossel Vertical (1080x1350) - Instagram/LinkedIn</option>
+          <option value="Carrossel Quadrado (1080x1080)">Carrossel Quadrado (1080x1080) - Instagram/LinkedIn</option>
+          <option value="Post Estático Vertical (1080x1350)">Post Estático Vertical (1080x1350)</option>
+          <option value="Post Estático Quadrado (1080x1080)">Post Estático Quadrado (1080x1080)</option>
+          <option value="Stories / Reels (1080x1920)">Stories / Reels (1080x1920)</option>
+          <option value="LinkedIn Banner (1584x396)">LinkedIn Banner (1584x396)</option>
+          <option value="Twitter Header (1500x500)">Twitter Header (1500x500)</option>
+          <option value="Vídeo Curto / Post-roll (1080x1920)">Vídeo Curto / Post-roll (1080x1920) - TikTok/Reels</option>
         </select>
       </div>
 
@@ -1085,7 +1168,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       : `A empresa NÃO possui identidade visual. Crie uma identidade completa do zero com total autonomia.`;
 
     let imageContext = hasImage
-      ? `\nARQUIVO DE REFERÊNCIA FORNECIDO (Imagem ou PDF):\nO usuário enviou um design/documento de referência. Sua tarefa é ANALISAR este material, MELHORÁ-LO significativamente elevando-o ao padrão ARIA de luxo e sofisticação, e SEGUIR ESTRITAMENTE a copy (texto) presente no arquivo original (ou fornecida no campo de texto). A estrutura e a mensagem devem ser mantidas, mas a execução visual deve ser completamente reimaginada para um nível superior. Se for um documento, extraia todo o texto relevante para usar como base.\n`
+      ? `\nARQUIVO DE REFERÊNCIA FORNECIDO (Imagem ou PDF):\nO usuário enviou um design/documento de referência. Sua tarefa é ANALISAR PROFUNDAMENTE este material. Você deve avaliar a composição atual, o uso de cores e o estilo visual. Em seguida, sugira melhorias claras e específicas para elevar o design ao padrão ARIA de luxo e sofisticação, alinhando-o perfeitamente com o tom "${tone}". SIGA ESTRITAMENTE a copy (texto) presente no arquivo original (ou fornecida no campo de texto). Se for um documento, extraia todo o texto relevante para usar como base.\n`
       : ``;
 
     let iconRecommendation = "";
@@ -1111,21 +1194,80 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     }
 
     let formatInstructions = "";
-    if (format === "Apresentação") {
+    if (format.includes("Apresentação")) {
       formatInstructions = `
-📐 LAYOUT SLIDE A SLIDE
-[Para cada slide: número, tipo, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}]`;
-    } else if (format === "Carrossel") {
+📐 LAYOUT SLIDE A SLIDE (Dimensões: 1920x1080 px | Proporção 16:9)
+[Para cada slide: número, tipo, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}. Lembre-se de manter margens de respiro nas bordas.]`;
+    } else if (format.includes("Carrossel")) {
+      let isVertical = format.includes("1350");
+      let dim = isVertical ? "1080x1350 px (Proporção 4:5 Vertical)" : "1080x1080 px (Proporção 1:1 Quadrado)";
+      let safeZone = isVertical ? "⚠️ MARGENS DE SEGURANÇA (4:5): Deixe o topo (aprox. 150px) e a base (aprox. 150px) livres de textos cruciais para evitar corte no feed ou sobreposição da UI do Instagram/LinkedIn." : "⚠️ MARGENS: Mantenha uma margem de respiro padrão de 80px a 100px em todas as bordas.";
       formatInstructions = `
-📐 LAYOUT CARD A CARD (CARROSSEL)
-[Para cada card (máx 10): Função (Capa, Retenção, Conteúdo, CTA), copy principal, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}. Foco em continuidade visual (elementos que vazam de um card para outro) e alta retenção]`;
-    } else if (format === "Post Estático") {
+📐 LAYOUT CARD A CARD - CARROSSEL
+- Dimensões exatas: ${dim} por card.
+- ${safeZone}
+[Para cada card (máx 10): Função (Capa, Retenção, Conteúdo, CTA), copy principal, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}. Foco em continuidade visual (elementos que vazam de um card para outro) e alta retenção. Especifique o alinhamento considerando a proporção escolhida.]`;
+    } else if (format.includes("Post Estático")) {
+      let isVertical = format.includes("1350");
+      let dim = isVertical ? "1080x1350 px (Proporção 4:5 Vertical)" : "1080x1080 px (Proporção 1:1 Quadrado)";
+      let safeZone = isVertical ? "⚠️ MARGENS DE SEGURANÇA (4:5): Deixe o topo e a base livres de textos cruciais para evitar sobreposição da UI do Instagram/LinkedIn." : "⚠️ MARGENS: Mantenha uma margem de respiro padrão em todas as bordas.";
       formatInstructions = `
-📐 LAYOUT DO POST (PEÇA ÚNICA)
-[Para a peça única: Ponto focal principal (scroll-stopper), grid usado, hierarquia visual (Hook/Título vs Apoio), posicionamento de cada elemento com especificações técnicas para ${tool}]`;
+📐 LAYOUT DO POST - PEÇA ÚNICA
+- Dimensões exatas: ${dim}.
+- ${safeZone}
+[Para a peça única: Ponto focal principal (scroll-stopper), grid usado, hierarquia visual (Hook/Título vs Apoio), posicionamento de cada elemento com especificações técnicas para ${tool}.]`;
+    } else if (format.includes("Stories")) {
+      formatInstructions = `
+📐 LAYOUT DO STORY/REELS (Dimensões exatas: 1080x1920 px | Proporção 9:16)
+⚠️ MARGENS DE SEGURANÇA CRÍTICAS: 
+- Topo: 250px livres (UI do perfil/app).
+- Base: 340px livres (Área de comentários/mensagens).
+- Direita: Evite ícones cruciais na lateral direita (botões de like/share no Reels/TikTok).
+[Para a peça: Ponto focal principal, grid usado, hierarquia visual, posicionamento de cada elemento com especificações técnicas para ${tool} respeitando rigorosamente as margens acima.]`;
+    } else if (format.includes("LinkedIn Banner")) {
+      formatInstructions = `
+📐 LAYOUT DO LINKEDIN BANNER (Dimensões exatas: 1584x396 px | Proporção 4:1)
+⚠️ MARGENS DE SEGURANÇA CRÍTICAS: 
+- Canto inferior esquerdo: Deixe uma área circular livre (aprox. 400x400 px) onde a foto de perfil do usuário ficará sobreposta.
+- Topo e bordas: Mantenha respiro de 50px.
+[Para a peça: Ponto focal principal (geralmente à direita ou centro-direita), grid usado, hierarquia visual, posicionamento de cada elemento com especificações técnicas para ${tool} respeitando a área da foto de perfil.]`;
+    } else if (format.includes("Twitter Header")) {
+      formatInstructions = `
+📐 LAYOUT DO TWITTER HEADER (Dimensões exatas: 1500x500 px | Proporção 3:1)
+⚠️ MARGENS DE SEGURANÇA CRÍTICAS: 
+- Canto inferior esquerdo: Deixe uma área livre (aprox. 400x200 px) para a foto de perfil.
+- Topo e base: Áreas de corte responsivo (aprox. 60px no topo e na base podem ser cortados dependendo do monitor).
+[Para a peça: Ponto focal principal (centro ou direita), grid usado, hierarquia visual, posicionamento de cada elemento com especificações técnicas para ${tool} respeitando as áreas de corte e foto de perfil.]`;
+    } else if (format.includes("Vídeo Curto")) {
+      formatInstructions = `
+📐 LAYOUT DE VÍDEO CURTO / POST-ROLL (Dimensões exatas: 1080x1920 px | Proporção 9:16)
+⚠️ MARGENS DE SEGURANÇA CRÍTICAS (TikTok/Reels/Shorts): 
+- Topo: 250px livres (UI do app, abas).
+- Base: 400px livres (Legenda, nome do usuário, música).
+- Direita: 150px livres (Botões de like, comentário, share).
+[Para a peça (tela final/post-roll ou overlay): Ponto focal principal, grid usado, hierarquia visual, posicionamento de cada elemento (CTAs, setas apontando para botões) com especificações técnicas para ${tool} respeitando rigorosamente as margens da UI do app.]`;
     }
 
+    let toolInstructions = "";
+    if (tool === "Canva") {
+      toolInstructions = `
+🚨 INSTRUÇÕES ESPECÍFICAS PARA CANVA E CANVA AI (MAGIC STUDIO):
+- Para busca de imagens no banco de dados do Canva, forneça o termo EXATO de busca em inglês. Ex: Canva Search: "corporate office modern minimal".
+- Para geração de imagens via IA do Canva (Magic Media / Text to Image), forneça o prompt hiper-detalhado em inglês. Ex: Canva AI Prompt: "A hyper-realistic photography of a sleek modern office, natural sunlight, minimalist desk, 8k resolution, cinematic lighting".
+- Especifique elementos gráficos nativos do Canva. Ex: "Use Canva Elements: 'blob shape', 'neon gradient blur', 'minimalist line arrow'".
+- Seja extremamente preciso com as dimensões solicitadas no formato do projeto para que o usuário configure a prancheta corretamente no Canva.`;
+    }
+
+    let analysisSection = hasImage ? `
+🔍 ANÁLISE DA REFERÊNCIA
+[Faça uma crítica construtiva da imagem/documento enviado. Analise a composição, cores e estilo atuais. Em seguida, liste as melhorias diretas e acionáveis para alinhar a referência ao tom "${tone}" e ao formato escolhido.]
+` : "";
+
     return `Você é ARIA, designer sênior de altíssimo padrão especializada em design corporativo e digital de luxo.
+
+⚠️ REGRA ESTRITA DE IDIOMA:
+1. TODO o texto do design (copy), estruturação, explicações e títulos DEVEM ser gerados em PORTUGUÊS (PT-BR), a menos que o texto original do copywriter já esteja em inglês ou haja um pedido explícito para criar em inglês.
+2. A ÚNICA EXCEÇÃO são os prompts de geração de imagens e termos de busca (na seção 🖼 IMAGENS E DIREÇÃO DE ARTE), que DEVEM ser estritamente em INGLÊS para garantir a máxima precisão nas ferramentas de IA.
 
 CONTEXTO DO PROJETO:
 - Formato do Projeto: ${format}
@@ -1144,6 +1286,9 @@ PROTOCOLO EDITORIAL:
 3. Aplique regras de densidade visual adequadas ao formato.
 
 Agora gere a especificação visual COMPLETA e DETALHADA, estruturada EXATAMENTE assim:
+${analysisSection}
+📏 VALIDAÇÃO DE FORMATO E DIMENSÕES
+[Inicie confirmando as dimensões exatas em pixels e a proporção (aspect ratio) do formato "${format}". Recalcule e reconfirme se as dimensões correspondem ao padrão da rede social/plataforma solicitada. Demonstre que você compreende as limitações físicas e de interface (UI) deste formato antes de prosseguir com o layout.]
 
 🎨 CONCEITO VISUAL
 [Descreva a ideia central estética, o feeling e a direção criativa do projeto]
@@ -1154,8 +1299,19 @@ Agora gere a especificação visual COMPLETA e DETALHADA, estruturada EXATAMENTE
 🎨 PALETA DE CORES
 [Liste as 3 cores com códigos HEX exatos, nome e função de cada uma. Formato: NOME: #HEXCODE — função]
 
-🖼 IMAGENS
-[Indique: banco de imagem + termo de busca em inglês entre aspas + composição ideal + tratamento (duotone/overlay/P&B/máscara/blur) com valores específicos]
+🖼 IMAGENS E DIREÇÃO DE ARTE (PROMPTS)
+[Com base na ANÁLISE DA REFERÊNCIA (se houver), no TEXTO DO COPYWRITER, no tom "${tone}" e no formato "${format}", defina a direção fotográfica/ilustrativa. Para cada imagem necessária, forneça OBRIGATORIAMENTE duas opções de busca/geração otimizadas para ${tool}:]
+1. Busca em Banco de Imagens: Termos EXATOS em INGLÊS. INCLUA OBRIGATORIAMENTE:
+   - Sujeito/Ação.
+   - Estilo de Fotografia/Ângulo (ex: "flat lay", "overhead shot", "low angle", "macro photography").
+   - Composição (ex: "rule of thirds", "negative space", "center framed").
+   - Iluminação (ex: "cinematic lighting", "natural light", "studio lighting").
+   - Foco e Desfoque (ex: "shallow depth of field", "blurred background", "bokeh").
+   Exemplo: "minimalist corporate desk flat lay, overhead shot, negative space, natural light, shallow depth of field".
+2. Prompt para IA (Midjourney/Canva AI/DALL-E): Prompt hiper-detalhado em INGLÊS seguindo RIGOROSAMENTE a estrutura:
+   [Subject/Action] + [Environment/Background] + [Photography Style/Angle (ex: flat lay, overhead shot, macro)] + [Lighting (ex: cinematic lighting, soft studio light, golden hour)] + [Camera/Lens (ex: 35mm photography, wide angle, DSLR)] + [Composition (ex: rule of thirds, negative space, center framed)] + [Resolution/Quality (ex: 8k, highly detailed, photorealistic)].
+[Indique também a composição ideal na tela considerando as margens do formato, e o tratamento visual (duotone/overlay/P&B/máscara/blur) com valores específicos para aplicar na ferramenta. Esta explicação deve ser em PORTUGUÊS.]
+${toolInstructions}
 
 🔷 ICONOGRAFIA
 [Biblioteca escolhida, estilo (outline/filled/duotone), tamanho em px, cor na paleta, e ícones específicos]
@@ -1173,7 +1329,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     if (!text && !window.uploadedImage) {
       document.getElementById('copyText').style.borderColor = '#c94c4c';
       setTimeout(() => document.getElementById('copyText').style.borderColor = '', 1500);
-      alert("Por favor, insira o texto do copywriter ou faça upload de uma imagem/PDF de referência.");
+      window.showModal("Atenção", "Por favor, insira o texto do copywriter ou faça upload de uma imagem/PDF de referência.", null, false);
       return;
     }
 
@@ -1442,19 +1598,38 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     if (pill) pill.classList.add('active');
   }
 
+  window.showModal = function(title, message, onConfirm, showCancel = true) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    const cancelBtn = document.getElementById('modalCancelBtn');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+
+    cancelBtn.style.display = showCancel ? 'block' : 'none';
+
+    cancelBtn.onclick = () => {
+      document.getElementById('customModal').style.display = 'none';
+    };
+
+    confirmBtn.onclick = () => {
+      document.getElementById('customModal').style.display = 'none';
+      if (onConfirm) onConfirm();
+    };
+
+    document.getElementById('customModal').style.display = 'flex';
+  }
+
   window.deleteProject = function(id) {
-    if (!confirm("Tem certeza que deseja apagar este projeto do histórico?")) return;
-    window.projects = window.projects.filter(p => p.id !== id);
-    localStorage.setItem('aria_projects', JSON.stringify(window.projects));
-    window.renderHistory();
-    
-    // If we deleted the currently active project, we might want to clear the output or just leave it.
-    // Leaving it is fine, but we should remove the active state.
-    const activePill = document.querySelector('.history-pill-wrapper.active');
-    if (!activePill && window.projects.length === 0) {
-      window.showState('empty');
-      document.getElementById('copyText').value = '';
-    }
+    window.showModal("Apagar Projeto", "Tem certeza que deseja apagar este projeto do histórico?", () => {
+      window.projects = window.projects.filter(p => p.id !== id);
+      localStorage.setItem('aria_projects', JSON.stringify(window.projects));
+      window.renderHistory();
+      
+      const activePill = document.querySelector('.history-pill-wrapper.active');
+      if (!activePill && window.projects.length === 0) {
+        window.showState('empty');
+        document.getElementById('copyText').value = '';
+      }
+    });
   }
 
   window.renderHistory = function() {
