@@ -43,7 +43,7 @@
   /* LAYOUT */
   .app {
     display: grid;
-    grid-template-columns: 320px 1fr;
+    grid-template-columns: 320px 1fr 240px;
     grid-template-rows: 56px 1fr;
     height: 100vh;
   }
@@ -699,19 +699,34 @@
     opacity: 0.5;
   }
 
-  /* HISTORY PILLS */
-  .history-bar {
-    padding: 8px 20px;
+  /* PROJECTS SIDEBAR */
+  .projects-sidebar {
+    background: var(--navy-2);
+    border-left: 1px solid var(--gold-border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .projects-header {
+    padding: 16px 20px;
     border-bottom: 1px solid var(--gold-border);
     display: flex;
     align-items: center;
-    gap: 8px;
-    overflow-x: auto;
-    scrollbar-width: none;
-    background: var(--navy-2);
+    justify-content: space-between;
   }
 
-  .history-bar::-webkit-scrollbar { display: none; }
+  .history-list {
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+    scrollbar-width: none;
+  }
+
+  .history-list::-webkit-scrollbar { display: none; }
 
   .history-label {
     font-size: 10px;
@@ -725,11 +740,11 @@
   .history-pill-wrapper {
     display: flex;
     align-items: center;
-    gap: 4px;
+    justify-content: space-between;
     background: transparent;
     border: 1px solid var(--gold-border);
-    border-radius: 20px;
-    padding: 2px 6px 2px 12px;
+    border-radius: 4px;
+    padding: 8px 12px;
     transition: all 0.2s;
   }
   .history-pill-wrapper:hover, .history-pill-wrapper.active {
@@ -740,10 +755,14 @@
     background: transparent;
     border: none;
     padding: 0;
-    font-size: 11px;
+    font-size: 12px;
     color: var(--cream-muted);
     cursor: pointer;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-align: left;
+    flex: 1;
     transition: all 0.2s;
   }
   .history-pill-wrapper:hover .history-pill, .history-pill-wrapper.active .history-pill {
@@ -937,6 +956,14 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
           </label>
         </div>
         <div class="brand-fields" id="brandFields">
+          <div style="display: flex; gap: 8px; margin-bottom: 12px; align-items: center;">
+            <select id="savedBrands" onchange="window.loadBrand()" style="flex: 1; padding: 6px; border-radius: 4px; border: 1px solid var(--gold-border); background: rgba(255,255,255,0.05); color: #fff; font-size: 12px; font-family: 'DM Sans', sans-serif;">
+              <option value="">Identidades salvas...</option>
+            </select>
+            <button type="button" onclick="window.saveBrand()" style="padding: 6px 12px; border-radius: 4px; background: var(--gold); border: none; color: var(--navy); cursor: pointer; font-size: 12px; font-weight: 500;">Salvar</button>
+            <button type="button" onclick="window.deleteBrand()" id="deleteBrandBtn" style="display:none; padding: 6px 12px; border-radius: 4px; background: rgba(255,100,100,0.2); border: 1px solid rgba(255,100,100,0.3); color: #ff6b6b; cursor: pointer; font-size: 12px;">Excluir</button>
+          </div>
+
           <div class="field-label" style="margin-bottom:4px;">Cor primária</div>
           <div class="color-row">
             <input type="color" id="color1" value="#0A1628" oninput="updateHex('color1','hex1')">
@@ -949,6 +976,9 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
           </div>
           <div class="field-label" style="margin-bottom:4px;margin-top:8px;">Fonte principal <span>opcional</span></div>
           <input type="text" id="brandFont" placeholder="Ex: Montserrat, Helvetica Neue...">
+          
+          <div class="field-label" style="margin-bottom:4px;margin-top:8px;">Links e Referências <span>opcional</span></div>
+          <textarea id="brandLinks" rows="2" placeholder="Ex: Link do Drive com fotos, site da empresa..." style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--gold-border); background: rgba(255,255,255,0.02); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical; box-sizing: border-box;"></textarea>
         </div>
       </div>
 
@@ -984,12 +1014,6 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 
   <!-- MAIN -->
   <main class="main">
-    <!-- HISTORY BAR -->
-    <div class="history-bar" id="historyBar">
-      <span class="history-label">Projetos</span>
-      <span style="font-size:11px;color:var(--cream-muted)">Nenhum projeto ainda</span>
-    </div>
-
     <!-- EMPTY STATE -->
     <div class="empty-state" id="emptyState">
       <div class="empty-icon">
@@ -1042,6 +1066,16 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     </div>
   </main>
 
+  <!-- PROJECTS SIDEBAR -->
+  <aside class="projects-sidebar">
+    <div class="projects-header">
+      <span class="history-label">Projetos Salvos</span>
+    </div>
+    <div class="history-list" id="historyBar">
+      <span style="font-size:11px;color:var(--cream-muted);padding: 16px;">Nenhum projeto ainda</span>
+    </div>
+  </aside>
+
 </div>
 
 <script type="module">
@@ -1054,6 +1088,74 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.currentOutput = '';
   window.loadingInterval = null;
   window.uploadedImage = null;
+
+  window.savedBrands = JSON.parse(localStorage.getItem('aria_brands') || '[]');
+
+  window.updateBrandsDropdown = function() {
+    const select = document.getElementById('savedBrands');
+    if (!select) return;
+    select.innerHTML = '<option value="">Identidades salvas...</option>';
+    window.savedBrands.forEach((b, i) => {
+      const opt = document.createElement('option');
+      opt.value = i;
+      opt.textContent = b.name;
+      select.appendChild(opt);
+    });
+  };
+
+  window.saveBrand = function() {
+    const name = prompt("Nome da identidade visual (ex: Cliente X):");
+    if (!name) return;
+    
+    const brand = {
+      name: name,
+      color1: document.getElementById('color1').value,
+      color2: document.getElementById('color2').value,
+      font: document.getElementById('brandFont').value,
+      links: document.getElementById('brandLinks').value
+    };
+    
+    window.savedBrands.push(brand);
+    localStorage.setItem('aria_brands', JSON.stringify(window.savedBrands));
+    window.updateBrandsDropdown();
+    document.getElementById('savedBrands').value = window.savedBrands.length - 1;
+    document.getElementById('deleteBrandBtn').style.display = 'inline-block';
+  };
+
+  window.loadBrand = function() {
+    const idx = document.getElementById('savedBrands').value;
+    if (idx === "") {
+      document.getElementById('deleteBrandBtn').style.display = 'none';
+      return;
+    }
+    
+    const brand = window.savedBrands[idx];
+    if (brand) {
+      document.getElementById('color1').value = brand.color1 || '#0A1628';
+      document.getElementById('hex1').value = brand.color1 || '#0A1628';
+      document.getElementById('color2').value = brand.color2 || '#C9A84C';
+      document.getElementById('hex2').value = brand.color2 || '#C9A84C';
+      document.getElementById('brandFont').value = brand.font || '';
+      document.getElementById('brandLinks').value = brand.links || '';
+      document.getElementById('deleteBrandBtn').style.display = 'inline-block';
+    }
+  };
+
+  window.deleteBrand = function() {
+    const idx = document.getElementById('savedBrands').value;
+    if (idx === "") return;
+    
+    if (confirm("Tem certeza que deseja excluir esta identidade?")) {
+      window.savedBrands.splice(idx, 1);
+      localStorage.setItem('aria_brands', JSON.stringify(window.savedBrands));
+      window.updateBrandsDropdown();
+      document.getElementById('deleteBrandBtn').style.display = 'none';
+    }
+  };
+
+  document.addEventListener('DOMContentLoaded', () => {
+    window.updateBrandsDropdown();
+  });
 
   window.handleImageUpload = function(event) {
     const file = event.target.files[0];
@@ -1162,13 +1264,13 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     }, 1800);
   }
 
-  window.buildPrompt = function(text, tool, hasBrand, color1, color2, font, tone, hasImage, format) {
+  window.buildPrompt = function(text, tool, hasBrand, color1, color2, font, tone, hasImage, format, brandLinks) {
     let brandContext = hasBrand
-      ? `A empresa JÁ POSSUI identidade visual. Respeite e expanda esta identidade:\n- Cor primária: ${color1}\n- Cor secundária: ${color2}\n${font ? `- Fonte: ${font}` : ''}\nAdapte a paleta e tipografia mantendo coerência com estes elementos.`
+      ? `A empresa JÁ POSSUI identidade visual. Respeite e expanda esta identidade:\n- Cor primária: ${color1}\n- Cor secundária: ${color2}\n${font ? `- Fonte: ${font}` : ''}\n${brandLinks ? `- Links e Referências da Marca: ${brandLinks}` : ''}\nAdapte a paleta e tipografia mantendo coerência com estes elementos e considere as referências fornecidas.`
       : `A empresa NÃO possui identidade visual. Crie uma identidade completa do zero com total autonomia.`;
 
     let imageContext = hasImage
-      ? `\nARQUIVO DE REFERÊNCIA FORNECIDO (Imagem ou PDF):\nO usuário enviou um design/documento de referência. Sua tarefa é ANALISAR PROFUNDAMENTE este material. Você deve avaliar a composição atual, o uso de cores e o estilo visual. Em seguida, sugira melhorias claras e específicas para elevar o design ao padrão ARIA de luxo e sofisticação, alinhando-o perfeitamente com o tom "${tone}". SIGA ESTRITAMENTE a copy (texto) presente no arquivo original (ou fornecida no campo de texto). Se for um documento, extraia todo o texto relevante para usar como base.\n`
+      ? `\nARQUIVO DE REFERÊNCIA FORNECIDO (Imagem ou PDF):\nO usuário enviou um design/documento de referência. Sua tarefa é atuar como um Diretor de Arte sênior e ANALISAR PROFUNDAMENTE este material. Você deve desconstruir a composição atual, o uso de cores, a tipografia e o estilo visual. Em seguida, sugira melhorias claras, técnicas e específicas para elevar o design ao padrão ARIA de luxo e sofisticação, alinhando-o perfeitamente com o tom "${tone}" e otimizando-o para as restrições e melhores práticas do formato "${format}". SIGA ESTRITAMENTE a copy (texto) presente no arquivo original (ou fornecida no campo de texto). Se for um documento, extraia todo o texto relevante para usar como base estrutural.\n`
       : ``;
 
     let iconRecommendation = "";
@@ -1197,24 +1299,29 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     if (format.includes("Apresentação")) {
       formatInstructions = `
 📐 LAYOUT SLIDE A SLIDE (Dimensões: 1920x1080 px | Proporção 16:9)
-[Para cada slide: número, tipo, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}. Lembre-se de manter margens de respiro nas bordas.]`;
+⚠️ MARGENS DE SEGURANÇA: Mantenha respiro de 100px nas bordas.
+[Para cada slide: número, tipo, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}.]`;
     } else if (format.includes("Carrossel")) {
       let isVertical = format.includes("1350");
       let dim = isVertical ? "1080x1350 px (Proporção 4:5 Vertical)" : "1080x1080 px (Proporção 1:1 Quadrado)";
-      let safeZone = isVertical ? "⚠️ MARGENS DE SEGURANÇA (4:5): Deixe o topo (aprox. 150px) e a base (aprox. 150px) livres de textos cruciais para evitar corte no feed ou sobreposição da UI do Instagram/LinkedIn." : "⚠️ MARGENS: Mantenha uma margem de respiro padrão de 80px a 100px em todas as bordas.";
+      let safeZone = isVertical 
+        ? "⚠️ MARGENS DE SEGURANÇA CRÍTICAS (4:5):\n- Instagram Grid: O feed do perfil corta a imagem para 1:1. Portanto, mantenha o conteúdo principal (textos e rostos) no quadrado central de 1080x1080px (deixe 135px livres no topo e 135px na base).\n- LinkedIn/Instagram Feed: Evite textos colados nas bordas (mantenha 80px de respiro lateral)." 
+        : "⚠️ MARGENS DE SEGURANÇA (1:1): Mantenha uma margem de respiro padrão de 80px a 100px em todas as bordas. Evite textos muito próximos aos cantos onde ficam os ícones de carrossel da UI.";
       formatInstructions = `
 📐 LAYOUT CARD A CARD - CARROSSEL
 - Dimensões exatas: ${dim} por card.
-- ${safeZone}
-[Para cada card (máx 10): Função (Capa, Retenção, Conteúdo, CTA), copy principal, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}. Foco em continuidade visual (elementos que vazam de um card para outro) e alta retenção. Especifique o alinhamento considerando a proporção escolhida.]`;
+${safeZone}
+[Para cada card (máx 10): Função (Capa, Retenção, Conteúdo, CTA), copy principal, grid usado, posicionamento de cada elemento com especificações técnicas para ${tool}. Foco em continuidade visual (elementos que vazam de um card para outro) e alta retenção. Especifique o alinhamento considerando a proporção escolhida e as margens de segurança.]`;
     } else if (format.includes("Post Estático")) {
       let isVertical = format.includes("1350");
       let dim = isVertical ? "1080x1350 px (Proporção 4:5 Vertical)" : "1080x1080 px (Proporção 1:1 Quadrado)";
-      let safeZone = isVertical ? "⚠️ MARGENS DE SEGURANÇA (4:5): Deixe o topo e a base livres de textos cruciais para evitar sobreposição da UI do Instagram/LinkedIn." : "⚠️ MARGENS: Mantenha uma margem de respiro padrão em todas as bordas.";
+      let safeZone = isVertical 
+        ? "⚠️ MARGENS DE SEGURANÇA CRÍTICAS (4:5):\n- Instagram Grid: O feed do perfil exibe apenas o centro 1:1. Mantenha o texto principal no quadrado central de 1080x1080px (135px livres no topo e base)." 
+        : "⚠️ MARGENS DE SEGURANÇA (1:1): Mantenha uma margem de respiro padrão de 80px a 100px em todas as bordas.";
       formatInstructions = `
 📐 LAYOUT DO POST - PEÇA ÚNICA
 - Dimensões exatas: ${dim}.
-- ${safeZone}
+${safeZone}
 [Para a peça única: Ponto focal principal (scroll-stopper), grid usado, hierarquia visual (Hook/Título vs Apoio), posicionamento de cada elemento com especificações técnicas para ${tool}.]`;
     } else if (format.includes("Stories")) {
       formatInstructions = `
@@ -1259,8 +1366,11 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     }
 
     let analysisSection = hasImage ? `
-🔍 ANÁLISE DA REFERÊNCIA
-[Faça uma crítica construtiva da imagem/documento enviado. Analise a composição, cores e estilo atuais. Em seguida, liste as melhorias diretas e acionáveis para alinhar a referência ao tom "${tone}" e ao formato escolhido.]
+🔍 ANÁLISE DA REFERÊNCIA E DIREÇÃO DE ARTE
+[Faça uma crítica construtiva e técnica da imagem/documento enviado. Divida sua análise em:
+1. Composição e Layout Atual: O que funciona e o que está falhando no layout atual.
+2. Cores, Tipografia e Estilo: Avaliação da paleta e estética em relação ao objetivo.
+3. Plano de Melhoria: Liste as melhorias diretas, técnicas e acionáveis para alinhar a referência ao tom "${tone}" e otimizar para o formato "${format}".]
 ` : "";
 
     return `Você é ARIA, designer sênior de altíssimo padrão especializada em design corporativo e digital de luxo.
@@ -1339,13 +1449,14 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     const color1 = document.getElementById('hex1').value;
     const color2 = document.getElementById('hex2').value;
     const font = document.getElementById('brandFont').value;
+    const brandLinks = document.getElementById('brandLinks').value;
     const tone = document.getElementById('toneSelect').value;
 
     document.getElementById('generateBtn').disabled = true;
     window.showState('loading');
     window.animateLoadingSteps();
 
-    const prompt = window.buildPrompt(text, tool, hasBrand, color1, color2, font, tone, !!window.uploadedImage, format);
+    const prompt = window.buildPrompt(text, tool, hasBrand, color1, color2, font, tone, !!window.uploadedImage, format, brandLinks);
 
     try {
       const parts = [];
@@ -1408,6 +1519,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     document.getElementById('outputMeta').textContent = `Gerado às ${now} · Tom: ${tone}`;
 
     const sectionDefs = [
+      { emoji: '🔍', key: 'ANÁLISE DA REFERÊNCIA E DIREÇÃO DE ARTE', label: 'Análise da Referência' },
+      { emoji: '📏', key: 'VALIDAÇÃO DE FORMATO E DIMENSÕES', label: 'Validação de Formato' },
       { emoji: '🎨', key: 'CONCEITO VISUAL', label: 'Conceito Visual' },
       { emoji: '🖋', key: 'TIPOGRAFIA', label: 'Tipografia' },
       { emoji: '🎨', key: 'PALETA DE CORES', label: 'Paleta de Cores' },
@@ -1634,9 +1747,9 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
 
   window.renderHistory = function() {
     const bar = document.getElementById('historyBar');
-    bar.innerHTML = `<span class="history-label">Projetos</span>`;
+    bar.innerHTML = '';
     if (window.projects.length === 0) {
-      bar.innerHTML += `<span style="font-size:11px;color:var(--cream-muted)">Nenhum projeto ainda</span>`;
+      bar.innerHTML = `<span style="font-size:11px;color:var(--cream-muted);padding: 16px;">Nenhum projeto ainda</span>`;
       return;
     }
     window.projects.forEach((p, i) => {
