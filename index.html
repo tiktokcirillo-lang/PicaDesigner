@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>ARIA — AI Design Studio</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script>
   pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 </script>
@@ -334,6 +336,28 @@
     transform: none;
   }
 
+  .manual-key-btn {
+    width: 100%;
+    margin-top: 12px;
+    font-size: 12px;
+    padding: 8px;
+    background: transparent;
+    border: 1px solid var(--gold-dim);
+    color: var(--cream-muted);
+    cursor: pointer;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    transition: all 0.2s;
+  }
+  .manual-key-btn:hover {
+    background: rgba(201,168,76,0.1);
+    color: var(--gold);
+    border-color: var(--gold);
+  }
+
   .sidebar-footer {
     padding: 16px 20px;
     border-top: 1px solid var(--gold-border);
@@ -557,6 +581,42 @@
 
   .copy-all-btn:hover {
     background: var(--gold-dim);
+  }
+
+  .export-dropdown {
+    position: relative;
+    display: inline-block;
+  }
+  .export-dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    margin-top: 4px;
+    background-color: var(--navy-2);
+    min-width: 140px;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.5);
+    z-index: 10;
+    border: 1px solid var(--gold-border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .export-dropdown-content a {
+    color: var(--cream-muted);
+    padding: 10px 14px;
+    text-decoration: none;
+    display: block;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    text-align: left;
+  }
+  .export-dropdown-content a:hover {
+    background-color: rgba(201,168,76,0.1);
+    color: var(--gold);
+  }
+  .export-dropdown:hover .export-dropdown-content {
+    display: block;
   }
 
   /* OUTPUT SECTIONS */
@@ -860,6 +920,7 @@
   <div class="modal-content">
     <h3 id="modalTitle">Confirmação</h3>
     <p id="modalMessage">Tem certeza?</p>
+    <input type="text" id="modalInput" style="display: none; width: 100%; margin-top: 12px; padding: 8px; background: var(--bg-darker); border: 1px solid var(--gold-dim); color: var(--cream); border-radius: 4px;" placeholder="Insira o valor aqui..." />
     <div class="modal-actions">
       <button id="modalCancelBtn" class="modal-btn-cancel">Cancelar</button>
       <button id="modalConfirmBtn" class="modal-btn-confirm">Confirmar</button>
@@ -900,13 +961,14 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       <div class="field-group">
         <label class="field-label">Referência Visual ou Arquivo <span>opcional</span></label>
         <div class="file-upload-container">
-          <input type="file" id="imageUpload" accept="image/png, image/jpeg, image/webp, application/pdf" style="display: none;" onchange="window.handleImageUpload(event)">
+          <input type="file" id="imageUpload" accept="image/png, image/jpeg, image/webp, application/pdf, video/mp4, video/quicktime" style="display: none;" onchange="window.handleImageUpload(event)">
           <button class="upload-btn" onclick="document.getElementById('imageUpload').click()">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-            Fazer Upload de Imagem ou PDF
+            Fazer Upload de Imagem, PDF ou Vídeo
           </button>
           <div id="imagePreview" class="image-preview" style="display: none;">
             <img id="previewImg" src="" alt="Preview" style="display: none;">
+            <video id="previewVideo" src="" style="display: none; width: 100%; border-radius: 8px;" controls></video>
             <div id="pdfPreview" style="display: none; background: var(--navy-2); text-align: center; position: relative;">
               <div id="pdfFallback" style="padding: 20px; color: var(--gold); font-family: 'DM Sans', sans-serif; font-size: 14px;">
                 📄 <span id="pdfName">Documento PDF</span>
@@ -1009,6 +1071,10 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       <button class="generate-btn" id="generateBtn" onclick="generate()">
         Gerar Design
       </button>
+      <button onclick="window.setManualApiKey()" class="manual-key-btn">
+        <i data-lucide="key" style="width: 14px; height: 14px;"></i>
+        Inserir Chave API Manualmente
+      </button>
     </div>
   </aside>
 
@@ -1059,7 +1125,16 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
         </div>
         <div style="display: flex; gap: 10px;">
           <button class="copy-all-btn" onclick="window.saveVersion()">Salvar Versão</button>
-          <button class="copy-all-btn" onclick="window.copyOutput()">Copiar tudo</button>
+          <button class="copy-all-btn" id="copyBtn" onclick="window.copyOutput()">Copiar tudo</button>
+          <div class="export-dropdown">
+            <button class="copy-all-btn">Exportar ▾</button>
+            <div class="export-dropdown-content">
+              <a onclick="window.exportFile('md')">Markdown (.md)</a>
+              <a onclick="window.exportFile('txt')">Texto (.txt)</a>
+              <a onclick="window.exportFile('html')">HTML (.html)</a>
+              <a onclick="window.printPdf()">PDF (.pdf)</a>
+            </div>
+          </div>
         </div>
       </div>
       <div id="outputSections"></div>
@@ -1081,9 +1156,69 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 <script type="module">
   import { GoogleGenAI } from "@google/genai";
 
-  const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  const DB_NAME = 'AriaDB';
+  const DB_VERSION = 1;
+  const STORE_NAME = 'keyval';
 
-  window.projects = JSON.parse(localStorage.getItem('aria_projects') || '[]');
+  function initDB() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(DB_NAME, DB_VERSION);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+      request.onupgradeneeded = (e) => {
+        e.target.result.createObjectStore(STORE_NAME);
+      };
+    });
+  }
+
+  async function getFromDB(key) {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.get(key);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function saveToDB(key, value) {
+    const db = await initDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const request = store.put(value, key);
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  window.projects = [];
+  
+  async function loadProjects() {
+    try {
+      let projects = await getFromDB('aria_projects');
+      if (!projects) {
+        // Migration from localStorage
+        const localProjects = localStorage.getItem('aria_projects');
+        if (localProjects) {
+          projects = JSON.parse(localProjects);
+          await saveToDB('aria_projects', projects);
+          localStorage.removeItem('aria_projects'); // Free up space
+        } else {
+          projects = [];
+        }
+      }
+      window.projects = projects;
+      window.renderHistory();
+    } catch (e) {
+      console.error("Failed to load projects from DB", e);
+      window.projects = [];
+    }
+  }
+  
+  loadProjects();
+
   window.savedVersions = [];
   window.currentOutput = '';
   window.loadingInterval = null;
@@ -1104,22 +1239,23 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   };
 
   window.saveBrand = function() {
-    const name = prompt("Nome da identidade visual (ex: Cliente X):");
-    if (!name) return;
-    
-    const brand = {
-      name: name,
-      color1: document.getElementById('color1').value,
-      color2: document.getElementById('color2').value,
-      font: document.getElementById('brandFont').value,
-      links: document.getElementById('brandLinks').value
-    };
-    
-    window.savedBrands.push(brand);
-    localStorage.setItem('aria_brands', JSON.stringify(window.savedBrands));
-    window.updateBrandsDropdown();
-    document.getElementById('savedBrands').value = window.savedBrands.length - 1;
-    document.getElementById('deleteBrandBtn').style.display = 'inline-block';
+    window.showPrompt("Salvar Identidade Visual", "Nome da identidade visual (ex: Cliente X):", "", (name) => {
+      if (!name || name.trim() === '') return;
+      
+      const brand = {
+        name: name.trim(),
+        color1: document.getElementById('color1').value,
+        color2: document.getElementById('color2').value,
+        font: document.getElementById('brandFont').value,
+        links: document.getElementById('brandLinks').value
+      };
+      
+      window.savedBrands.push(brand);
+      localStorage.setItem('aria_brands', JSON.stringify(window.savedBrands));
+      window.updateBrandsDropdown();
+      document.getElementById('savedBrands').value = window.savedBrands.length - 1;
+      document.getElementById('deleteBrandBtn').style.display = 'inline-block';
+    });
   };
 
   window.loadBrand = function() {
@@ -1145,12 +1281,12 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     const idx = document.getElementById('savedBrands').value;
     if (idx === "") return;
     
-    if (confirm("Tem certeza que deseja excluir esta identidade?")) {
+    window.showModal("Excluir Identidade", "Tem certeza que deseja excluir esta identidade visual?", () => {
       window.savedBrands.splice(idx, 1);
       localStorage.setItem('aria_brands', JSON.stringify(window.savedBrands));
       window.updateBrandsDropdown();
       document.getElementById('deleteBrandBtn').style.display = 'none';
-    }
+    });
   };
 
   document.addEventListener('DOMContentLoaded', () => {
@@ -1170,8 +1306,15 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       };
       
       document.getElementById('imagePreview').style.display = 'block';
-      if (file.type === 'application/pdf') {
-        document.getElementById('previewImg').style.display = 'none';
+      
+      const isVideo = file.type.startsWith('video/');
+      const isPdf = file.type === 'application/pdf';
+
+      document.getElementById('previewImg').style.display = 'none';
+      document.getElementById('pdfPreview').style.display = 'none';
+      document.getElementById('previewVideo').style.display = 'none';
+
+      if (isPdf) {
         document.getElementById('pdfPreview').style.display = 'block';
         document.getElementById('pdfName').textContent = file.name;
         document.getElementById('pdfFallback').style.display = 'block';
@@ -1206,10 +1349,12 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
           console.error('Erro ao renderizar PDF:', err);
           // Fallback to just showing the name is already handled
         }
+      } else if (isVideo) {
+        document.getElementById('previewVideo').src = e.target.result;
+        document.getElementById('previewVideo').style.display = 'block';
       } else {
         document.getElementById('previewImg').src = e.target.result;
         document.getElementById('previewImg').style.display = 'block';
-        document.getElementById('pdfPreview').style.display = 'none';
       }
     };
     reader.readAsDataURL(file);
@@ -1220,6 +1365,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     document.getElementById('imageUpload').value = '';
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('previewImg').src = '';
+    document.getElementById('previewVideo').src = '';
     const canvas = document.getElementById('pdfCanvas');
     if (canvas) {
       const ctx = canvas.getContext('2d');
@@ -1270,7 +1416,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       : `A empresa NÃO possui identidade visual. Crie uma identidade completa do zero com total autonomia.`;
 
     let imageContext = hasImage
-      ? `\nARQUIVO DE REFERÊNCIA FORNECIDO (Imagem ou PDF):\nO usuário enviou um design/documento de referência. Sua tarefa é atuar como um Diretor de Arte sênior e ANALISAR PROFUNDAMENTE este material. Você deve desconstruir a composição atual, o uso de cores, a tipografia e o estilo visual. Em seguida, sugira melhorias claras, técnicas e específicas para elevar o design ao padrão ARIA de luxo e sofisticação, alinhando-o perfeitamente com o tom "${tone}" e otimizando-o para as restrições e melhores práticas do formato "${format}". SIGA ESTRITAMENTE a copy (texto) presente no arquivo original (ou fornecida no campo de texto). Se for um documento, extraia todo o texto relevante para usar como base estrutural.\n`
+      ? `\nARQUIVO DE REFERÊNCIA FORNECIDO (Imagem, PDF ou Vídeo):\nO usuário enviou um design/documento/vídeo de referência. Sua tarefa é atuar como um Diretor de Arte sênior e ANALISAR PROFUNDAMENTE este material. Você deve desconstruir a composição atual, o uso de cores, a tipografia e o estilo visual. Se for um vídeo, identifique cenas-chave, extraia o texto (se presente) e analise o estilo visual geral (cores, iluminação, movimento). Em seguida, sugira melhorias claras, técnicas e específicas para elevar o design ao padrão ARIA de luxo e sofisticação, alinhando-o perfeitamente com o tom "${tone}" e otimizando-o para as restrições e melhores práticas do formato "${format}". SIGA ESTRITAMENTE a copy (texto) presente no arquivo original (ou fornecida no campo de texto). Se for um documento ou vídeo, extraia todo o texto relevante para usar como base estrutural.\n`
       : ``;
 
     let iconRecommendation = "";
@@ -1367,9 +1513,9 @@ ${safeZone}
 
     let analysisSection = hasImage ? `
 🔍 ANÁLISE DA REFERÊNCIA E DIREÇÃO DE ARTE
-[Faça uma crítica construtiva e técnica da imagem/documento enviado. Divida sua análise em:
-1. Composição e Layout Atual: O que funciona e o que está falhando no layout atual.
-2. Cores, Tipografia e Estilo: Avaliação da paleta e estética em relação ao objetivo.
+[Faça uma crítica construtiva e técnica da imagem/documento/vídeo enviado. Divida sua análise em:
+1. Composição e Layout Atual (ou Cenas-Chave se for vídeo): O que funciona e o que está falhando no layout atual. Se for vídeo, descreva as cenas principais e o ritmo.
+2. Cores, Tipografia e Estilo (incluindo iluminação e movimento para vídeos): Avaliação da paleta e estética em relação ao objetivo.
 3. Plano de Melhoria: Liste as melhorias diretas, técnicas e acionáveis para alinhar a referência ao tom "${tone}" e otimizar para o formato "${format}".]
 ` : "";
 
@@ -1434,6 +1580,21 @@ ${formatInstructions}
 Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especificação deve ser diretamente executável por um designer.`;
   }
 
+  window.setManualApiKey = function() {
+    const currentKey = localStorage.getItem('manual_gemini_key') || '';
+    const msg = currentKey ? "Você já tem uma chave salva. Insira uma nova para substituir ou deixe em branco para remover:" : "Insira sua chave de API do Google Gemini:";
+    
+    window.showPrompt("Chave de API Manual", msg, currentKey, (key) => {
+      if (key.trim() === '') {
+        localStorage.removeItem('manual_gemini_key');
+        window.showModal("Chave Removida", "A chave manual foi removida.", null, false);
+      } else {
+        localStorage.setItem('manual_gemini_key', key.trim());
+        window.showModal("Chave Salva", "Sua chave de API foi salva no navegador com sucesso!", null, false);
+      }
+    });
+  }
+
   window.generate = async function() {
     const text = document.getElementById('copyText').value.trim();
     if (!text && !window.uploadedImage) {
@@ -1442,6 +1603,34 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       window.showModal("Atenção", "Por favor, insira o texto do copywriter ou faça upload de uma imagem/PDF de referência.", null, false);
       return;
     }
+
+    if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
+      try {
+        await window.aistudio.openSelectKey();
+      } catch (e) {
+        window.showModal("Atenção", "É necessário selecionar uma chave de API para continuar.", null, false);
+        return;
+      }
+    }
+
+    // Initialize AI right before calling, using the injected process.env.API_KEY or GEMINI_API_KEY
+    let apiKey = process.env.GEMINI_API_KEY;
+    try {
+      const userKey = process.env.API_KEY;
+      if (userKey) apiKey = userKey;
+    } catch (e) {
+      // Ignore ReferenceError if process is not defined and no key was injected
+    }
+    
+    const manualKey = localStorage.getItem('manual_gemini_key');
+    if (manualKey) apiKey = manualKey;
+
+    if (!apiKey) {
+      window.showModal("Chave Ausente", "Nenhuma chave de API encontrada. Por favor, clique em 'Inserir Chave API Manualmente' na barra lateral.", null, false);
+      return;
+    }
+
+    const ai = new GoogleGenAI({ apiKey: apiKey });
 
     const format = document.getElementById('formatSelect').value;
     const tool = document.getElementById('toolSelect').value;
@@ -1494,18 +1683,29 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           color1: color1,
           color2: color2,
           font: font,
+          brandLinks: brandLinks,
           tone: tone,
-          raw: raw
+          raw: raw,
+          uploadedImage: window.uploadedImage
         }
       };
       window.projects.push(proj);
-      localStorage.setItem('aria_projects', JSON.stringify(window.projects));
+      await saveToDB('aria_projects', window.projects);
       window.renderHistory();
 
     } catch (err) {
       clearInterval(window.loadingInterval);
-      window.currentOutput = 'Erro ao conectar com a API. Verifique sua conexão e tente novamente.\n\nDetalhes: ' + err.message;
-      window.renderOutput(window.currentOutput, tool, tone);
+      
+      if (err.message && err.message.includes('401')) {
+        window.currentOutput = 'Erro de autenticação (401). A chave de API fornecida é inválida ou não tem permissão. Clique em "Inserir Chave API Manualmente" na barra lateral para atualizar sua chave.';
+        window.renderOutput(window.currentOutput, tool, tone);
+        window.showModal("Erro de Autenticação", "A chave de API é inválida. Por favor, insira sua chave manualmente clicando no botão na barra lateral.", () => {
+            window.setManualApiKey();
+        }, true);
+      } else {
+        window.currentOutput = 'Erro ao conectar com a API. Verifique sua conexão e tente novamente.\n\nDetalhes: ' + err.message;
+        window.renderOutput(window.currentOutput, tool, tone);
+      }
     }
 
     document.getElementById('generateBtn').disabled = false;
@@ -1610,26 +1810,27 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
 
   window.saveVersion = function() {
     if (!window.currentOutput) return;
-    const name = prompt("Nome para esta versão:", "Versão " + (window.savedVersions.length + 1));
-    if (!name) return;
+    window.showPrompt("Salvar Versão", "Nome para esta versão:", "Versão " + (window.savedVersions.length + 1), (name) => {
+      if (!name || name.trim() === '') return;
 
-    const version = {
-      id: Date.now(),
-      name: name,
-      date: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-      state: {
-        text: document.getElementById('copyText').value,
-        tool: document.getElementById('toolSelect').value,
-        hasBrand: document.getElementById('hasBrand').checked,
-        color1: document.getElementById('hex1').value,
-        color2: document.getElementById('hex2').value,
-        font: document.getElementById('brandFont').value,
-        tone: document.getElementById('toneSelect').value,
-        raw: window.currentOutput
-      }
-    };
-    window.savedVersions.push(version);
-    window.renderSavedVersions();
+      const version = {
+        id: Date.now(),
+        name: name.trim(),
+        date: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+        state: {
+          text: document.getElementById('copyText').value,
+          tool: document.getElementById('toolSelect').value,
+          hasBrand: document.getElementById('hasBrand').checked,
+          color1: document.getElementById('hex1').value,
+          color2: document.getElementById('hex2').value,
+          font: document.getElementById('brandFont').value,
+          tone: document.getElementById('toneSelect').value,
+          raw: window.currentOutput
+        }
+      };
+      window.savedVersions.push(version);
+      window.renderSavedVersions();
+    });
   }
 
   window.revertVersion = function(id) {
@@ -1678,28 +1879,81 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
 
     const state = p.state || {
       text: p.label,
-      format: 'Apresentação',
+      format: 'Apresentação (16:9 - 1920x1080)',
       tool: p.tool || 'PowerPoint',
       hasBrand: false,
       color1: '#0A1628',
       color2: '#C9A84C',
       font: '',
+      brandLinks: '',
       tone: 'institucional e premium',
-      raw: p.raw
+      raw: p.raw,
+      uploadedImage: null
     };
 
     // Restore inputs
-    document.getElementById('copyText').value = state.text;
+    document.getElementById('copyText').value = state.text || '';
     if (state.format) document.getElementById('formatSelect').value = state.format;
-    document.getElementById('toolSelect').value = state.tool;
-    document.getElementById('hasBrand').checked = state.hasBrand;
+    document.getElementById('toolSelect').value = state.tool || 'PowerPoint';
+    document.getElementById('hasBrand').checked = !!state.hasBrand;
     window.toggleBrand();
-    document.getElementById('hex1').value = state.color1;
-    document.getElementById('color1').value = state.color1;
-    document.getElementById('hex2').value = state.color2;
-    document.getElementById('color2').value = state.color2;
-    document.getElementById('brandFont').value = state.font;
-    document.getElementById('toneSelect').value = state.tone;
+    document.getElementById('hex1').value = state.color1 || '#0A1628';
+    document.getElementById('color1').value = state.color1 || '#0A1628';
+    document.getElementById('hex2').value = state.color2 || '#C9A84C';
+    document.getElementById('color2').value = state.color2 || '#C9A84C';
+    document.getElementById('brandFont').value = state.font || '';
+    document.getElementById('brandLinks').value = state.brandLinks || '';
+    document.getElementById('toneSelect').value = state.tone || 'institucional e premium';
+
+    // Restore uploaded image
+    window.removeImage();
+    if (state.uploadedImage) {
+      window.uploadedImage = state.uploadedImage;
+      document.getElementById('imagePreview').style.display = 'block';
+      const isVideo = state.uploadedImage.mimeType.startsWith('video/');
+      const isPdf = state.uploadedImage.mimeType === 'application/pdf';
+
+      if (isPdf) {
+        document.getElementById('pdfPreview').style.display = 'block';
+        document.getElementById('pdfName').textContent = state.uploadedImage.name;
+        document.getElementById('pdfFallback').style.display = 'block';
+        
+        try {
+          const pdfData = atob(state.uploadedImage.data);
+          const uint8Array = new Uint8Array(pdfData.length);
+          for (let i = 0; i < pdfData.length; i++) {
+            uint8Array[i] = pdfData.charCodeAt(i);
+          }
+          const loadingTask = pdfjsLib.getDocument({data: uint8Array});
+          loadingTask.promise.then(async pdf => {
+            const page = await pdf.getPage(1);
+            const scale = 1.5;
+            const viewport = page.getViewport({scale: scale});
+            const canvas = document.getElementById('pdfCanvas');
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+            
+            const renderContext = {
+              canvasContext: context,
+              viewport: viewport
+            };
+            await page.render(renderContext).promise;
+            
+            document.getElementById('pdfFallback').style.display = 'none';
+            canvas.style.display = 'block';
+          }).catch(err => console.error('Erro ao renderizar PDF restaurado:', err));
+        } catch (err) {
+          console.error('Erro ao preparar PDF restaurado:', err);
+        }
+      } else if (isVideo) {
+        document.getElementById('previewVideo').src = 'data:' + state.uploadedImage.mimeType + ';base64,' + state.uploadedImage.data;
+        document.getElementById('previewVideo').style.display = 'block';
+      } else {
+        document.getElementById('previewImg').src = 'data:' + state.uploadedImage.mimeType + ';base64,' + state.uploadedImage.data;
+        document.getElementById('previewImg').style.display = 'block';
+      }
+    }
 
     // Restore output
     window.currentOutput = state.raw;
@@ -1711,9 +1965,10 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     if (pill) pill.classList.add('active');
   }
 
-  window.showModal = function(title, message, onConfirm, showCancel = true) {
+  window.showModal = function(title, message, onConfirm, showCancel = true, onCancel = null) {
     document.getElementById('modalTitle').textContent = title;
     document.getElementById('modalMessage').textContent = message;
+    document.getElementById('modalInput').style.display = 'none';
     const cancelBtn = document.getElementById('modalCancelBtn');
     const confirmBtn = document.getElementById('modalConfirmBtn');
 
@@ -1721,6 +1976,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
 
     cancelBtn.onclick = () => {
       document.getElementById('customModal').style.display = 'none';
+      if (onCancel) onCancel();
     };
 
     confirmBtn.onclick = () => {
@@ -1731,10 +1987,37 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     document.getElementById('customModal').style.display = 'flex';
   }
 
+  window.showPrompt = function(title, message, defaultValue, onConfirm, onCancel = null) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    
+    const input = document.getElementById('modalInput');
+    input.style.display = 'block';
+    input.value = defaultValue || '';
+    
+    const cancelBtn = document.getElementById('modalCancelBtn');
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+
+    cancelBtn.style.display = 'block';
+
+    cancelBtn.onclick = () => {
+      document.getElementById('customModal').style.display = 'none';
+      if (onCancel) onCancel();
+    };
+
+    confirmBtn.onclick = () => {
+      document.getElementById('customModal').style.display = 'none';
+      if (onConfirm) onConfirm(input.value);
+    };
+
+    document.getElementById('customModal').style.display = 'flex';
+    input.focus();
+  }
+
   window.deleteProject = function(id) {
-    window.showModal("Apagar Projeto", "Tem certeza que deseja apagar este projeto do histórico?", () => {
+    window.showModal("Apagar Projeto", "Tem certeza que deseja apagar este projeto do histórico?", async () => {
       window.projects = window.projects.filter(p => p.id !== id);
-      localStorage.setItem('aria_projects', JSON.stringify(window.projects));
+      await saveToDB('aria_projects', window.projects);
       window.renderHistory();
       
       const activePill = document.querySelector('.history-pill-wrapper.active');
@@ -1743,6 +2026,66 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         document.getElementById('copyText').value = '';
       }
     });
+  }
+
+  window.editProjectLabel = function(id, wrapper, pill, actionsDiv) {
+    const p = window.projects.find(x => x.id === id);
+    if (!p) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = p.label;
+    input.className = 'history-pill-input';
+    input.style.width = '100%';
+    input.style.background = 'transparent';
+    input.style.border = '1px solid var(--gold)';
+    input.style.color = 'var(--cream)';
+    input.style.fontSize = '12px';
+    input.style.padding = '2px 4px';
+    input.style.borderRadius = '2px';
+    input.style.outline = 'none';
+
+    wrapper.insertBefore(input, pill);
+    pill.style.display = 'none';
+    actionsDiv.style.display = 'none';
+    input.focus();
+
+    let isSaving = false;
+
+    const saveEdit = () => {
+      if (isSaving) return;
+      isSaving = true;
+      const newLabel = input.value.trim();
+      if (newLabel && newLabel !== p.label) {
+        window.showModal("Renomear Projeto", `Tem certeza que deseja renomear o projeto para "${newLabel}"?`, async () => {
+          p.label = newLabel;
+          await saveToDB('aria_projects', window.projects);
+          window.renderHistory();
+        }, true, () => {
+          window.renderHistory();
+        });
+      } else {
+        window.renderHistory();
+      }
+    };
+
+    input.onblur = () => {
+      // Small delay to allow click on modal to register
+      setTimeout(() => {
+        if (!isSaving && document.getElementById('customModal').style.display === 'none') {
+          window.renderHistory();
+        }
+      }, 100);
+    };
+
+    input.onkeydown = (e) => {
+      if (e.key === 'Enter') {
+        saveEdit();
+      } else if (e.key === 'Escape') {
+        isSaving = true;
+        window.renderHistory();
+      }
+    };
   }
 
   window.renderHistory = function() {
@@ -1762,6 +2105,19 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       pill.textContent = p.label;
       pill.onclick = () => window.revertProject(p.id);
       
+      const actionsDiv = document.createElement('div');
+      actionsDiv.style.display = 'flex';
+      actionsDiv.style.gap = '4px';
+
+      const editBtn = document.createElement('button');
+      editBtn.className = 'delete-pill-btn';
+      editBtn.innerHTML = '✎';
+      editBtn.title = 'Renomear projeto';
+      editBtn.onclick = (e) => {
+        e.stopPropagation();
+        window.editProjectLabel(p.id, wrapper, pill, actionsDiv);
+      };
+
       const delBtn = document.createElement('button');
       delBtn.className = 'delete-pill-btn';
       delBtn.innerHTML = '×';
@@ -1771,8 +2127,11 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         window.deleteProject(p.id);
       };
 
+      actionsDiv.appendChild(editBtn);
+      actionsDiv.appendChild(delBtn);
+
       wrapper.appendChild(pill);
-      wrapper.appendChild(delBtn);
+      wrapper.appendChild(actionsDiv);
       bar.appendChild(wrapper);
     });
   }
@@ -1780,10 +2139,84 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
   window.copyOutput = function() {
     if (!window.currentOutput) return;
     navigator.clipboard.writeText(window.currentOutput).then(() => {
-      const btn = document.querySelector('.copy-all-btn');
-      btn.textContent = 'Copiado ✓';
-      setTimeout(() => btn.textContent = 'Copiar tudo', 2000);
+      const btn = document.getElementById('copyBtn');
+      if (btn) {
+        btn.textContent = 'Copiado ✓';
+        setTimeout(() => btn.textContent = 'Copiar tudo', 2000);
+      }
     });
+  }
+
+  window.exportFile = function(format) {
+    if (!window.currentOutput) return;
+    
+    let content = window.currentOutput;
+    let mimeType = 'text/plain';
+    
+    if (format === 'html') {
+      // Convert markdown to simple HTML for export
+      content = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Especificação Visual</title>
+<style>
+  body { font-family: sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+  h1, h2, h3 { color: #111; }
+  pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+  code { background: #f4f4f4; padding: 2px 4px; border-radius: 2px; }
+</style>
+</head>
+<body>
+${window.marked.parse(window.currentOutput)}
+</body>
+</html>`;
+      mimeType = 'text/html';
+    } else if (format === 'md') {
+      mimeType = 'text/markdown';
+    }
+    
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `especificacao-visual.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  window.printPdf = function() {
+    if (!window.currentOutput) return;
+    
+    // Create a temporary container for html2pdf
+    const container = document.createElement('div');
+    container.innerHTML = window.marked.parse(window.currentOutput);
+    container.style.padding = '20px';
+    container.style.fontFamily = 'sans-serif';
+    container.style.lineHeight = '1.6';
+    container.style.color = '#000';
+    
+    // Style adjustments for PDF
+    const style = document.createElement('style');
+    style.textContent = `
+      h1, h2, h3 { color: #000; }
+      pre { background: #f4f4f4; padding: 10px; border-radius: 4px; white-space: pre-wrap; }
+      code { background: #f4f4f4; padding: 2px 4px; border-radius: 2px; }
+    `;
+    container.appendChild(style);
+    
+    const opt = {
+      margin:       10,
+      filename:     'especificacao-visual.pdf',
+      image:        { type: 'jpeg', quality: 0.98 },
+      html2canvas:  { scale: 2 },
+      jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    
+    // Generate PDF
+    html2pdf().set(opt).from(container).save();
   }
 
   // Enter key on textarea: Ctrl+Enter to generate
