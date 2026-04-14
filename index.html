@@ -928,6 +928,53 @@
   </div>
 </div>
 
+<!-- Onboarding Modal -->
+<div id="onboardingModal" class="modal-overlay" style="display: none; z-index: 2000;">
+  <div class="modal-content" style="max-width: 500px; text-align: center; padding: 40px 30px;">
+    <h2 style="color: var(--gold); margin-bottom: 10px; font-family: 'Cormorant Garamond', serif; font-size: 28px;">Bem-vindo ao ARIA ✨</h2>
+    <p style="color: var(--cream-muted); font-size: 14px; margin-bottom: 30px;">Seu estúdio de Direção de Arte e Design com Inteligência Artificial.</p>
+    
+    <div style="text-align: left; margin-bottom: 30px; display: flex; flex-direction: column; gap: 16px;">
+      <div style="display: flex; gap: 12px; align-items: flex-start;">
+        <div style="font-size: 20px;">📝</div>
+        <div>
+          <strong style="color: var(--cream); font-size: 14px;">Copy para Design</strong>
+          <p style="color: var(--cream-muted); font-size: 13px; margin-top: 4px; line-height: 1.4;">Transforme textos brutos ou referências visuais em especificações de design detalhadas e prontas para uso.</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: flex-start;">
+        <div style="font-size: 20px;">🎨</div>
+        <div>
+          <strong style="color: var(--cream); font-size: 14px;">Identidade Visual & Logos</strong>
+          <p style="color: var(--cream-muted); font-size: 13px; margin-top: 4px; line-height: 1.4;">Defina cores e fontes da marca, ou use nosso Gerador de Logo com IA para criar identidades do zero.</p>
+        </div>
+      </div>
+      <div style="display: flex; gap: 12px; align-items: flex-start;">
+        <div style="font-size: 20px;">🚀</div>
+        <div>
+          <strong style="color: var(--cream); font-size: 14px;">Exportação Prática</strong>
+          <p style="color: var(--cream-muted); font-size: 13px; margin-top: 4px; line-height: 1.4;">Exporte suas especificações para PDF, Markdown ou HTML com apenas um clique.</p>
+        </div>
+      </div>
+    </div>
+    
+    <button onclick="window.closeOnboarding()" style="width: 100%; padding: 12px; background: var(--gold); color: var(--navy); border: none; border-radius: 4px; font-weight: 600; font-size: 14px; cursor: pointer; transition: opacity 0.2s;">Começar a criar</button>
+  </div>
+</div>
+
+<!-- Copy Refinement Modal -->
+<div id="copyModal" class="modal-overlay" style="display: none;">
+  <div class="modal-content" style="max-width: 500px;">
+    <h3>✨ Copy Refinada</h3>
+    <p style="font-size: 13px; color: var(--cream-muted); margin-bottom: 12px;">Edite se necessário e clique em Aplicar para substituir o texto original.</p>
+    <textarea id="refinedCopyText" rows="8" style="width: 100%; padding: 10px; background: var(--bg-darker); border: 1px solid var(--gold-dim); color: var(--cream); border-radius: 4px; font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical; box-sizing: border-box;"></textarea>
+    <div class="modal-actions" style="margin-top: 16px;">
+      <button onclick="document.getElementById('copyModal').style.display = 'none'" class="modal-btn-cancel">Cancelar</button>
+      <button onclick="window.applyRefinedCopy()" class="modal-btn-confirm">Aplicar</button>
+    </div>
+  </div>
+</div>
+
 <div class="app">
 
   <!-- TOPBAR -->
@@ -956,6 +1003,9 @@
         <textarea id="copyText" placeholder="Cole o texto que será transformado em design...
 
 Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados financeiros, depoimento de cliente..."></textarea>
+        <div style="display: flex; justify-content: flex-end; margin-top: 8px;">
+          <button type="button" id="refineCopyBtn" onclick="window.refineCopy()" style="padding: 6px 12px; border-radius: 4px; background: rgba(201,168,76,0.1); border: 1px solid var(--gold-border); color: var(--gold); cursor: pointer; font-size: 11px; font-weight: 500; transition: all 0.2s;">✨ Refinar Copy</button>
+        </div>
       </div>
 
       <div class="field-group">
@@ -1028,19 +1078,34 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 
           <div class="field-label" style="margin-bottom:4px;">Cor primária</div>
           <div class="color-row">
-            <input type="color" id="color1" value="#0A1628" oninput="updateHex('color1','hex1')">
-            <input type="text" id="hex1" class="color-hex" value="#0A1628" placeholder="#000000" oninput="updateColor('hex1','color1')">
+            <input type="color" id="color1" value="#000000" oninput="window.updateHex('color1','hex1')">
+            <input type="text" id="hex1" class="color-hex" value="" placeholder="Ex: #0A1628 (opcional)" oninput="window.updateColor('hex1','color1')">
           </div>
           <div class="field-label" style="margin-bottom:4px;margin-top:8px;">Cor secundária</div>
           <div class="color-row">
-            <input type="color" id="color2" value="#C9A84C" oninput="updateHex('color2','hex2')">
-            <input type="text" id="hex2" class="color-hex" value="#C9A84C" placeholder="#000000" oninput="updateColor('hex2','color2')">
+            <input type="color" id="color2" value="#000000" oninput="window.updateHex('color2','hex2')">
+            <input type="text" id="hex2" class="color-hex" value="" placeholder="Ex: #C9A84C (opcional)" oninput="window.updateColor('hex2','color2')">
           </div>
           <div class="field-label" style="margin-bottom:4px;margin-top:8px;">Fonte principal <span>opcional</span></div>
           <input type="text" id="brandFont" placeholder="Ex: Montserrat, Helvetica Neue...">
           
-          <div class="field-label" style="margin-bottom:4px;margin-top:8px;">Links e Referências <span>opcional</span></div>
-          <textarea id="brandLinks" rows="2" placeholder="Ex: Link do Drive com fotos, site da empresa..." style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--gold-border); background: rgba(255,255,255,0.02); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical; box-sizing: border-box;"></textarea>
+          <div class="field-label" style="margin-bottom:4px;margin-top:8px;">URL da Marca <span>opcional</span></div>
+          <input type="url" id="brandLinks" placeholder="Ex: https://meusite.com.br" style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--gold-border); background: rgba(255,255,255,0.02); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; box-sizing: border-box;">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label" style="margin-bottom:4px; display: flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          Gerador de Logo com IA
+        </div>
+        <textarea id="logoPrompt" rows="2" placeholder="Descreva o logo (ex: Um leão minimalista dourado com fundo escuro)..." style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--gold-border); background: rgba(255,255,255,0.02); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical; box-sizing: border-box; margin-bottom: 8px;"></textarea>
+        <button type="button" id="generateLogoBtn" onclick="window.generateLogo()" style="width: 100%; padding: 8px; border-radius: 4px; background: rgba(201,168,76,0.1); border: 1px solid var(--gold-border); color: var(--gold); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">✨ Gerar Logo</button>
+        
+        <div id="logoResultContainer" style="display: none; margin-top: 12px; text-align: center; position: relative;">
+          <img id="generatedLogoImg" src="" style="max-width: 100%; border-radius: 4px; border: 1px solid var(--gold-border);" />
+          <button type="button" onclick="window.clearLogo()" style="position: absolute; top: 4px; right: 4px; background: rgba(0,0,0,0.6); color: #fff; border: none; border-radius: 50%; width: 24px; height: 24px; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 14px;">×</button>
+          <input type="hidden" id="logoBase64" value="" />
         </div>
       </div>
 
@@ -1244,10 +1309,11 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       
       const brand = {
         name: name.trim(),
-        color1: document.getElementById('color1').value,
-        color2: document.getElementById('color2').value,
+        color1: document.getElementById('hex1').value.trim(),
+        color2: document.getElementById('hex2').value.trim(),
         font: document.getElementById('brandFont').value,
-        links: document.getElementById('brandLinks').value
+        links: document.getElementById('brandLinks').value,
+        logoBase64: document.getElementById('logoBase64').value
       };
       
       window.savedBrands.push(brand);
@@ -1267,12 +1333,23 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     
     const brand = window.savedBrands[idx];
     if (brand) {
-      document.getElementById('color1').value = brand.color1 || '#0A1628';
-      document.getElementById('hex1').value = brand.color1 || '#0A1628';
-      document.getElementById('color2').value = brand.color2 || '#C9A84C';
-      document.getElementById('hex2').value = brand.color2 || '#C9A84C';
+      document.getElementById('color1').value = brand.color1 || '#000000';
+      document.getElementById('hex1').value = brand.color1 || '';
+      document.getElementById('color2').value = brand.color2 || '#000000';
+      document.getElementById('hex2').value = brand.color2 || '';
       document.getElementById('brandFont').value = brand.font || '';
       document.getElementById('brandLinks').value = brand.links || '';
+      
+      if (brand.logoBase64) {
+        document.getElementById('logoBase64').value = brand.logoBase64;
+        document.getElementById('generatedLogoImg').src = brand.logoBase64;
+        document.getElementById('logoResultContainer').style.display = 'block';
+      } else {
+        document.getElementById('logoBase64').value = '';
+        document.getElementById('generatedLogoImg').src = '';
+        document.getElementById('logoResultContainer').style.display = 'none';
+      }
+      
       document.getElementById('deleteBrandBtn').style.display = 'inline-block';
     }
   };
@@ -1411,8 +1488,14 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   }
 
   window.buildPrompt = function(text, tool, hasBrand, color1, color2, font, tone, hasImage, format, brandLinks) {
+    let brandDetails = [];
+    if (color1) brandDetails.push(`- Cor primária: ${color1}`);
+    if (color2) brandDetails.push(`- Cor secundária: ${color2}`);
+    if (font) brandDetails.push(`- Fonte: ${font}`);
+    if (brandLinks) brandDetails.push(`- URL da Marca: ${brandLinks}`);
+
     let brandContext = hasBrand
-      ? `A empresa JÁ POSSUI identidade visual. Respeite e expanda esta identidade:\n- Cor primária: ${color1}\n- Cor secundária: ${color2}\n${font ? `- Fonte: ${font}` : ''}\n${brandLinks ? `- Links e Referências da Marca: ${brandLinks}` : ''}\nAdapte a paleta e tipografia mantendo coerência com estes elementos e considere as referências fornecidas.`
+      ? `A empresa JÁ POSSUI identidade visual. Respeite e expanda esta identidade:\n${brandDetails.join('\n')}\nAdapte a paleta e tipografia mantendo coerência com estes elementos e considere as referências fornecidas.`
       : `A empresa NÃO possui identidade visual. Crie uma identidade completa do zero com total autonomia.`;
 
     let imageContext = hasImage
@@ -1595,6 +1678,177 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     });
   }
 
+  window.clearLogo = function() {
+    document.getElementById('logoBase64').value = '';
+    document.getElementById('generatedLogoImg').src = '';
+    document.getElementById('logoResultContainer').style.display = 'none';
+  };
+
+  window.applyRefinedCopy = function() {
+    const refinedText = document.getElementById('refinedCopyText').value;
+    document.getElementById('copyText').value = refinedText;
+    document.getElementById('copyModal').style.display = 'none';
+  };
+
+  window.refineCopy = async function() {
+    const text = document.getElementById('copyText').value.trim();
+    if (!text) {
+      window.showModal("Aviso", "Por favor, insira algum texto para ser refinado.", null, false);
+      return;
+    }
+    if (text.length > 10000) {
+      window.showModal("Aviso", "O texto do copywriter é muito longo (máximo 10.000 caracteres).", null, false);
+      return;
+    }
+
+    let apiKey = process.env.GEMINI_API_KEY;
+    try {
+      const userKey = process.env.API_KEY;
+      if (userKey) apiKey = userKey;
+    } catch (e) {}
+    
+    const manualKey = localStorage.getItem('manual_gemini_key');
+    if (manualKey) apiKey = manualKey;
+
+    if (!apiKey) {
+      window.showModal("Chave Ausente", "Nenhuma chave de API encontrada. Por favor, clique em 'Inserir Chave API Manualmente' na barra lateral.", null, false);
+      return;
+    }
+
+    const tone = document.getElementById('toneSelect').value;
+    const btn = document.getElementById('refineCopyBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Refinando...';
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+      const prompt = `Você é um copywriter sênior especialista em design de apresentações e interfaces.
+Sua tarefa é refinar o seguinte texto para que ele fique mais claro, impactante e adequado ao tom de voz "${tone}".
+Corrija erros gramaticais, melhore a fluidez e, se necessário, estruture melhor as frases para que fiquem perfeitas para um design visual.
+Retorne APENAS o texto refinado, sem introduções ou explicações.
+
+TEXTO ORIGINAL:
+${text}`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3.1-pro-preview',
+        contents: { parts: [{ text: prompt }] }
+      });
+
+      const refinedText = response.text || '';
+      document.getElementById('refinedCopyText').value = refinedText.trim();
+      document.getElementById('copyModal').style.display = 'flex';
+    } catch (err) {
+      console.error(err);
+      window.showModal("Erro", "Erro ao refinar copy: " + err.message, null, false);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '✨ Refinar Copy';
+    }
+  };
+
+  window.generateLogo = async function() {
+    const promptText = document.getElementById('logoPrompt').value.trim();
+    if (!promptText) {
+      window.showModal("Aviso", "Por favor, descreva o logo que deseja gerar.", null, false);
+      return;
+    }
+    if (promptText.length > 500) {
+      window.showModal("Aviso", "A descrição do logo é muito longa (máximo 500 caracteres).", null, false);
+      return;
+    }
+
+    let apiKey = process.env.GEMINI_API_KEY;
+    try {
+      const userKey = process.env.API_KEY;
+      if (userKey) apiKey = userKey;
+    } catch (e) {}
+    
+    const manualKey = localStorage.getItem('manual_gemini_key');
+    if (manualKey) apiKey = manualKey;
+
+    if (!apiKey) {
+      window.showModal("Chave Ausente", "Nenhuma chave de API encontrada. Por favor, clique em 'Inserir Chave API Manualmente' na barra lateral.", null, false);
+      return;
+    }
+
+    const btn = document.getElementById('generateLogoBtn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Gerando...';
+
+    try {
+      const ai = new GoogleGenAI({ apiKey: apiKey });
+      const response = await ai.models.generateImages({
+          model: 'imagen-3.0-generate-002',
+          prompt: 'Logo design, vector style, flat, professional, ' + promptText,
+          config: {
+              numberOfImages: 1,
+              outputMimeType: 'image/jpeg',
+              aspectRatio: '1:1'
+          }
+      });
+      
+      const base64Image = response.generatedImages[0].image.imageBytes;
+      const dataUrl = 'data:image/jpeg;base64,' + base64Image;
+      
+      document.getElementById('logoBase64').value = dataUrl;
+      document.getElementById('generatedLogoImg').src = dataUrl;
+      document.getElementById('logoResultContainer').style.display = 'block';
+    } catch (err) {
+      console.error(err);
+      window.showModal("Erro", "Erro ao gerar logo: " + err.message, null, false);
+    } finally {
+      btn.disabled = false;
+      btn.innerHTML = '✨ Gerar Logo';
+    }
+  };
+
+  window.validateInputs = function() {
+    const text = document.getElementById('copyText').value.trim();
+    if (text.length > 10000) {
+      window.showModal("Atenção", "O texto do copywriter é muito longo (máximo 10.000 caracteres).", null, false);
+      return false;
+    }
+
+    const hasBrand = document.getElementById('hasBrand').checked;
+    if (hasBrand) {
+      const hexRegex = /^#[0-9A-Fa-f]{6}$/;
+      const hex1 = document.getElementById('hex1').value.trim();
+      const hex2 = document.getElementById('hex2').value.trim();
+      
+      if (hex1 && !hexRegex.test(hex1)) {
+        window.showModal("Atenção", "Cor primária inválida. Use o formato HEX (ex: #0A1628).", null, false);
+        return false;
+      }
+      if (hex2 && !hexRegex.test(hex2)) {
+        window.showModal("Atenção", "Cor secundária inválida. Use o formato HEX (ex: #C9A84C).", null, false);
+        return false;
+      }
+
+      const font = document.getElementById('brandFont').value.trim();
+      if (font.length > 100) {
+        window.showModal("Atenção", "O nome da fonte é muito longo (máximo 100 caracteres).", null, false);
+        return false;
+      }
+
+      const links = document.getElementById('brandLinks').value.trim();
+      if (links) {
+        if (links.length > 1000) {
+          window.showModal("Atenção", "A URL da marca é muito longa (máximo 1000 caracteres).", null, false);
+          return false;
+        }
+        try {
+          new URL(links);
+        } catch (e) {
+          window.showModal("Atenção", "URL da marca inválida. Certifique-se de incluir http:// ou https://", null, false);
+          return false;
+        }
+      }
+    }
+
+    return true;
+  };
+
   window.generate = async function() {
     const text = document.getElementById('copyText').value.trim();
     if (!text && !window.uploadedImage) {
@@ -1603,6 +1857,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       window.showModal("Atenção", "Por favor, insira o texto do copywriter ou faça upload de uma imagem/PDF de referência.", null, false);
       return;
     }
+
+    if (!window.validateInputs()) return;
 
     if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
       try {
@@ -1657,6 +1913,23 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           }
         });
       }
+      
+      const logoBase64 = document.getElementById('logoBase64').value;
+      if (logoBase64) {
+        // Extract base64 data from data URL
+        const base64Data = logoBase64.split(',')[1];
+        if (base64Data) {
+          parts.push({
+            inlineData: {
+              mimeType: 'image/jpeg',
+              data: base64Data
+            }
+          });
+          // Add a note to the prompt about the logo
+          parts.push({ text: "A imagem acima é o logo da marca gerado por IA. Considere suas formas, estilo e cores na sua análise e recomendações de design." });
+        }
+      }
+      
       parts.push({ text: prompt });
 
       const response = await ai.models.generateContent({
@@ -1684,6 +1957,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           color2: color2,
           font: font,
           brandLinks: brandLinks,
+          logoBase64: document.getElementById('logoBase64').value,
           tone: tone,
           raw: raw,
           uploadedImage: window.uploadedImage
@@ -1882,10 +2156,11 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       format: 'Apresentação (16:9 - 1920x1080)',
       tool: p.tool || 'PowerPoint',
       hasBrand: false,
-      color1: '#0A1628',
-      color2: '#C9A84C',
+      color1: '',
+      color2: '',
       font: '',
       brandLinks: '',
+      logoBase64: null,
       tone: 'institucional e premium',
       raw: p.raw,
       uploadedImage: null
@@ -1897,12 +2172,23 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     document.getElementById('toolSelect').value = state.tool || 'PowerPoint';
     document.getElementById('hasBrand').checked = !!state.hasBrand;
     window.toggleBrand();
-    document.getElementById('hex1').value = state.color1 || '#0A1628';
-    document.getElementById('color1').value = state.color1 || '#0A1628';
-    document.getElementById('hex2').value = state.color2 || '#C9A84C';
-    document.getElementById('color2').value = state.color2 || '#C9A84C';
+    document.getElementById('hex1').value = state.color1 || '';
+    document.getElementById('color1').value = state.color1 || '#000000';
+    document.getElementById('hex2').value = state.color2 || '';
+    document.getElementById('color2').value = state.color2 || '#000000';
     document.getElementById('brandFont').value = state.font || '';
     document.getElementById('brandLinks').value = state.brandLinks || '';
+    
+    if (state.logoBase64) {
+      document.getElementById('logoBase64').value = state.logoBase64;
+      document.getElementById('generatedLogoImg').src = state.logoBase64;
+      document.getElementById('logoResultContainer').style.display = 'block';
+    } else {
+      document.getElementById('logoBase64').value = '';
+      document.getElementById('generatedLogoImg').src = '';
+      document.getElementById('logoResultContainer').style.display = 'none';
+    }
+
     document.getElementById('toneSelect').value = state.tone || 'institucional e premium';
 
     // Restore uploaded image
@@ -2224,8 +2510,18 @@ ${window.marked.parse(window.currentOutput)}
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') window.generate();
   });
 
+  window.closeOnboarding = function() {
+    document.getElementById('onboardingModal').style.display = 'none';
+    localStorage.setItem('aria_onboarding_completed', 'true');
+  };
+
   // Initial render
   window.renderHistory();
+
+  // Show onboarding if not completed
+  if (!localStorage.getItem('aria_onboarding_completed')) {
+    document.getElementById('onboardingModal').style.display = 'flex';
+  }
 </script>
 </body>
 </html>
