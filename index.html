@@ -1428,6 +1428,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.referenceSession = null;
   window.brandSession = null;
   window.creativeDirection = null;
+  window.layoutIntelligence = null;
   window.activeProjectId = crypto.randomUUID();
   window.referenceAnalysisDepth = 'standard';
 
@@ -2047,6 +2048,19 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       const payload = await window.parseApiResponse(response);
       if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
       window.brandSession = payload.brandIntelligence || null;
+      window.layoutIntelligence = payload.layoutIntelligence || null;
+      if (new URLSearchParams(window.location.search).get('debug') === 'layout' && window.layoutIntelligence?.layoutDocument?.frames?.[0]) {
+        const plan = window.layoutIntelligence.layoutDocument.frames[0];
+        let panel = document.getElementById('layoutDebugPanel');
+        if (!panel) {
+          panel = document.createElement('aside');
+          panel.id = 'layoutDebugPanel';
+          panel.style.cssText = 'position:fixed;right:12px;bottom:12px;width:min(420px,calc(100vw - 24px));max-height:70vh;overflow:auto;z-index:99999;background:#fff;color:#111;border:2px solid #00aaff;padding:12px;font:11px/1.4 monospace;box-shadow:0 10px 40px #0005';
+          document.body.appendChild(panel);
+        }
+        const boxes = plan.elements.map(element => `<g><rect x="${element.pixelRect.x}" y="${element.pixelRect.y}" width="${element.pixelRect.width}" height="${element.pixelRect.height}" fill="none" stroke="#00aaff" stroke-width="3"/><text x="${element.pixelRect.x + 8}" y="${element.pixelRect.y + 18}" font-size="14">${window.escapeHtml(element.role)}</text></g>`).join('');
+        panel.innerHTML = `<strong>LAYOUT DIAGNOSTIC — NOT PRODUCTION ART</strong><p>Archetype: ${window.escapeHtml(plan.archetype)} · Grid: ${plan.grid.columns} col · Safe area: ${Object.values(plan.canvas.safeArea).map(value => Number(value).toFixed(3)).join(' / ')}</p><p>Negative space: ${Number(plan.negativeSpaceRatio).toFixed(3)} · Mass: ${Number(plan.visualMassCenter.x).toFixed(3)}, ${Number(plan.visualMassCenter.y).toFixed(3)} · Collisions: ${plan.collisions.length} · Quality: ${Number(plan.quality.overall).toFixed(3)}</p><svg viewBox="0 0 ${plan.canvas.width} ${plan.canvas.height}" style="width:100%;background:#f7f7f7;border:1px solid #ccc">${boxes}</svg>`;
+      }
       const raw = payload.content || '';
       window.currentOutput = raw;
 
@@ -2079,6 +2093,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           referenceSession: window.referenceSession,
           brandSession: window.brandSession,
           creativeDirection: window.creativeDirection,
+          layoutIntelligence: window.layoutIntelligence,
           aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, brandAnalysisCost: window.brandSession?.aiUsage?.totalCostUsd || 0, creativeDirectionCost: window.creativeDirection?.cost || 0, designSpecCost: payload.stageCostUsd || 0, projectTotalAiCost: payload.aiUsage?.totalCostUsd || 0}
         }
       };
@@ -2270,6 +2285,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.referenceSession = version.state.referenceSession || window.referenceSession;
     window.brandSession = version.state.brandSession || window.brandSession;
     window.creativeDirection = version.state.creativeDirection || window.creativeDirection;
+    window.layoutIntelligence = version.state.layoutIntelligence || window.layoutIntelligence;
 
     // Restore output
     window.currentOutput = version.state.raw;
@@ -2401,6 +2417,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.referenceSession = state.referenceSession || null;
     window.brandSession = state.brandSession || null;
     window.creativeDirection = state.creativeDirection || null;
+    window.layoutIntelligence = state.layoutIntelligence || null;
     if (window.referenceSession) window.showForensicsDiagnostics(window.referenceSession);
     if (window.creativeDirection) window.showCreativeDiagnostics(window.creativeDirection);
 

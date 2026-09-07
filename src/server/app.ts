@@ -4,6 +4,7 @@ import {createLegacyAIRouter} from './api/legacy-ai.js';
 import {createVisualForensicsRouter} from './api/visual-forensics.js';
 import {createCreativeDirectionRouter} from './api/creative-direction.js';
 import {applicationBudgetStore} from '../infrastructure/ai/budget/runtime-store.js';
+import {createLayoutRouter} from './api/layout.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -13,6 +14,7 @@ export const createServerApp = () => {
   app.get('/api/health/ai-budget',async(_request,response)=>response.json(await applicationBudgetStore.health()));
   app.use('/api/visual-forensics', createVisualForensicsRouter());
   app.use('/api/creative-direction', createCreativeDirectionRouter());
+  app.use('/api/layout', createLayoutRouter());
   app.use('/api/ai', createLegacyAIRouter());
   return app;
 };

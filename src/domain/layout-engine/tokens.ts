@@ -1,0 +1,3 @@
+import type {BrandDNA} from '../brand-intelligence/index.js';
+import type {CanvasSpec,SpacingScale} from './types.js';
+export const resolveSpacingScale=(canvas:CanvasSpec,brand?:BrandDNA,routeDensity=.5):SpacingScale=>{const short=Math.min(canvas.width,canvas.height);const brandAir=brand?.spacingCharacter?.whitespacePreference??.5;const normalized=.004+(.006*brandAir)+(.002*(1-routeDensity));const base=Math.max(4,Math.min(12,Math.round(short*normalized)));return{baseUnit:base,normalizedBaseUnit:base/short,tokens:{xxs:base*.5,xs:base,sm:base*2,md:base*3,lg:base*4,xl:base*6,'2xl':base*8,'3xl':base*12}}};

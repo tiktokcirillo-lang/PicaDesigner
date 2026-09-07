@@ -7,6 +7,7 @@ import {DesignSpecPromptBuilder} from '../design-spec/prompt-builder.js';
 import type {DesignSpecificationResult, GenerateDesignSpecRequest} from '../design-spec/types.js';
 import {isReferenceQualityUsable, validateReferenceSession} from '../reference-intelligence/create-reference-intelligence.js';
 import {fingerprintCreativeDirection} from '../creative-direction/create-creative-direction.js';
+import {createLayoutIntelligence} from '../layout-intelligence/index.js';
 
 const TEXT_RESULT_SCHEMA = {
   type: 'object',
@@ -71,10 +72,13 @@ export const generateDesignSpec = async (input: GenerateDesignSpecRequest, depen
     const fingerprint = await fingerprintCreativeDirection({projectId: input.projectId, copy: input.copy, format: input.format, destinationTool: input.destinationTool, tone: input.tone, brandIntelligence: input.brandIntelligence, referenceIntelligence: input.referenceIntelligence, adaptedDesignConstraints: input.adaptedDesignConstraints??brand.adapted});
     if (input.creativeDirection.inputFingerprint !== fingerprint) throw new Error('Não foi possível construir uma direção criativa válida.');
   }
+  const layoutIntelligence=input.creativeDirection ? (input.layoutIntelligence??createLayoutIntelligence({projectId:input.projectId,creativeDirection:input.creativeDirection,brandIntelligence:brand.session,referenceIntelligence:input.referenceIntelligence,format:input.format,destinationTool:input.destinationTool})) : undefined;
+  if(layoutIntelligence?.status==='failed')throw new Error(`Layout Intelligence failed: ${layoutIntelligence.failureReason}`);
+  const governedInput={...input,layoutIntelligence};
   const built = input.legacyPrompt
     ? {instructions: 'Produce a professional Portuguese visual design specification. Return only the completed specification in the structured text field.', input: input.legacyPrompt, decisions: []}
     : undefined;
-  const finalPrompt = built ?? builder.build(input, brand);
+  const finalPrompt = built ?? builder.build(governedInput, brand);
   const result = await executeTextTask({projectId: input.projectId, task: 'generate_design_spec', instructions: finalPrompt.instructions, prompt: finalPrompt.input, maxOutputTokens: 9_000}, dependencies);
   return {
     content: result.text,
@@ -83,6 +87,7 @@ export const generateDesignSpec = async (input: GenerateDesignSpecRequest, depen
     brandIntelligence: brand.session,
     brandCompatibility: brand.compatibility,
     adaptedDesignConstraints: brand.adapted,
+    layoutIntelligence,
     qualityMetadata: {referenceQualityScore: input.referenceIntelligence?.quality?.score, referenceConfidence: input.referenceIntelligence?.forensics?.overallConfidence, decisionProvenance: finalPrompt.decisions},
     aiUsage: result.aiUsage,
     stageCostUsd: result.stageCostUsd,

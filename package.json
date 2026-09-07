@@ -12,6 +12,7 @@
     "brand:validation": "tsx src/domain/brand-intelligence/brand-intelligence.validation.ts",
     "creative:validation": "tsx src/domain/creative-direction/creative-direction.validation.ts",
     "budget:validation": "tsx src/infrastructure/ai/budget/budget.validation.ts",
+    "layout:validation": "tsx src/domain/layout-engine/layout-engine.validation.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

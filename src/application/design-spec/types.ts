@@ -2,6 +2,7 @@ import type {AIUsageResult} from '../../infrastructure/ai/types.js';
 import type {ReferenceIntelligenceSession} from '../reference-intelligence/index.js';
 import type {AdaptedDesignConstraints, BrandInput, BrandIntelligenceSession, BrandReferenceCompatibilityReport} from '../../domain/brand-intelligence/index.js';
 import type {CreativeDirectionSession} from '../../domain/creative-direction/index.js';
+import type {LayoutIntelligenceSession} from '../../domain/layout-engine/index.js';
 
 export interface GenerateDesignSpecRequest {
   projectId: string;
@@ -14,6 +15,7 @@ export interface GenerateDesignSpecRequest {
   referenceIntelligence?: ReferenceIntelligenceSession;
   adaptedDesignConstraints?: AdaptedDesignConstraints;
   creativeDirection?: CreativeDirectionSession;
+  layoutIntelligence?: LayoutIntelligenceSession;
   /** @deprecated Temporary compatibility for pre-3.4 clients. */
   legacyPrompt?: string;
 }
@@ -25,6 +27,7 @@ export interface DesignSpecificationResult {
   brandIntelligence?: BrandIntelligenceSession;
   brandCompatibility?: BrandReferenceCompatibilityReport;
   adaptedDesignConstraints?: AdaptedDesignConstraints;
+  layoutIntelligence?: LayoutIntelligenceSession;
   qualityMetadata?: {referenceQualityScore?: number; referenceConfidence?: number; decisionProvenance: DesignDecision[]};
   aiUsage: AIUsageResult;
   stageCostUsd: number;

@@ -1,0 +1,10 @@
+import type {ArtDirectionRoute} from '../creative-direction/index.js';
+import type {BrandDNA} from '../brand-intelligence/index.js';
+import {resolveCanvas} from './formats.js';
+import {createLayoutContent} from './content.js';
+import {rankLayoutArchetypes,resolveLayoutIntent} from './archetypes.js';
+import {solveLayoutCandidate} from './solver.js';
+import {selectBestLayoutCandidate} from './scoring.js';
+import type {FormatDefinition,LayoutPlan,ResponsiveLayoutFamily} from './types.js';
+export const reflowLayoutPlan=(source:LayoutPlan,target:FormatDefinition,route:ArtDirectionRoute,brand?:BrandDNA):LayoutPlan=>{const canvas=resolveCanvas(target),intent=resolveLayoutIntent(route,target,brand),content=createLayoutContent(route,brand);const candidates=rankLayoutArchetypes(route,intent,target,content,brand).slice(0,3).map((a,i)=>({plan:solveLayoutCandidate({projectId:source.projectId,creativeSessionId:source.creativeDirectionSessionId,route,canvas,format:target,archetype:a.id,intent,content,brand,variant:i}),id:a.id}));const plan=selectBestLayoutCandidate(candidates).plan;return{...plan,responsiveMetadata:{sourceLayoutId:source.layoutId,invariants:['selected creative route','hero role','primary message priority','creative device identity','brand asset treatment','message content','major hierarchy']},provenance:[...plan.provenance,{decision:`Reflowed from ${source.format.id}; coordinates were recomputed.`,source:'responsive_reflow'}]}};
+export const createResponsiveLayoutFamily=(source:LayoutPlan,targets:FormatDefinition[],route:ArtDirectionRoute,brand?:BrandDNA):ResponsiveLayoutFamily=>({familyId:`family_${source.layoutId}`,sourceLayoutId:source.layoutId,variants:[source,...targets.filter(t=>t.id!==source.format.id).map(t=>reflowLayoutPlan(source,t,route,brand))],invariants:['creative route','hero role','message content','creative device','brand treatment','hierarchy']});
