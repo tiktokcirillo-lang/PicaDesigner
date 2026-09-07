@@ -9,6 +9,7 @@
     "ai:cost-sim": "tsx scripts/ai-cost-sim.ts",
     "openai:smoke": "tsx scripts/openai-smoke.ts",
     "reference:validation": "tsx src/application/reference-intelligence/reference-intelligence.validation.ts",
+    "brand:validation": "tsx src/domain/brand-intelligence/brand-intelligence.validation.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

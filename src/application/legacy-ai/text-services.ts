@@ -66,13 +66,19 @@ export const generateDesignSpec = async (input: GenerateDesignSpecRequest, depen
   }
   const built = input.legacyPrompt
     ? {instructions: 'Produce a professional Portuguese visual design specification. Return only the completed specification in the structured text field.', input: input.legacyPrompt, decisions: []}
-    : new DesignSpecPromptBuilder().build(input);
-  const result = await executeTextTask({projectId: input.projectId, task: 'generate_design_spec', instructions: built.instructions, prompt: built.input, maxOutputTokens: 9_000}, dependencies);
+    : undefined;
+  const builder = new DesignSpecPromptBuilder();
+  const brand = builder.resolveBrand(input);
+  const finalPrompt = built ?? builder.build(input, brand);
+  const result = await executeTextTask({projectId: input.projectId, task: 'generate_design_spec', instructions: finalPrompt.instructions, prompt: finalPrompt.input, maxOutputTokens: 9_000}, dependencies);
   return {
     content: result.text,
     projectId: input.projectId,
     referenceSessionId: input.referenceIntelligence?.sessionId,
-    qualityMetadata: {referenceQualityScore: input.referenceIntelligence?.quality?.score, referenceConfidence: input.referenceIntelligence?.forensics?.overallConfidence, decisionProvenance: built.decisions},
+    brandIntelligence: brand.session,
+    brandCompatibility: brand.compatibility,
+    adaptedDesignConstraints: brand.adapted,
+    qualityMetadata: {referenceQualityScore: input.referenceIntelligence?.quality?.score, referenceConfidence: input.referenceIntelligence?.forensics?.overallConfidence, decisionProvenance: finalPrompt.decisions},
     aiUsage: result.aiUsage,
   };
 };

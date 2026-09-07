@@ -46,7 +46,7 @@ export const createLegacyAIRouter = (): Router => {
       if (!body.format?.trim() || body.format.length > 120) return response.status(400).json({error: 'format is required'});
       if (!body.destinationTool?.trim() || body.destinationTool.length > 120) return response.status(400).json({error: 'destinationTool is required'});
       if (!body.tone?.trim() || body.tone.length > 200) return response.status(400).json({error: 'tone is required'});
-      return response.json(await generateDesignSpec({projectId, copy: body.copy, format: body.format, destinationTool: body.destinationTool, tone: body.tone, brandInput: body.brandInput, referenceIntelligence: body.referenceIntelligence}, dependencies()));
+      return response.json(await generateDesignSpec({projectId, copy: body.copy, format: body.format, destinationTool: body.destinationTool, tone: body.tone, brandInput: body.brandInput, brandIntelligence: body.brandIntelligence, referenceIntelligence: body.referenceIntelligence}, dependencies()));
     } catch (error) {return sendError(response, error);}
   });
   return router;

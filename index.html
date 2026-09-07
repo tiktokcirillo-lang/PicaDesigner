@@ -1424,6 +1424,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.loadingInterval = null;
   window.uploadedImage = null;
   window.referenceSession = null;
+  window.brandSession = null;
   window.activeProjectId = crypto.randomUUID();
   window.referenceAnalysisDepth = 'standard';
 
@@ -2026,11 +2027,13 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           destinationTool: tool,
           tone,
           brandInput: hasBrand ? {colors: [color1, color2].filter(Boolean), headlineFont: font, bodyFont: fontBody, lineHeight, letterSpacing, wordSpacing, url: brandLinks} : undefined,
-          referenceIntelligence: window.referenceSession
+          referenceIntelligence: window.referenceSession,
+          brandIntelligence: hasBrand ? window.brandSession : undefined
         })
       });
       const payload = await window.parseApiResponse(response);
       if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
+      window.brandSession = payload.brandIntelligence || null;
       const raw = payload.content || '';
       window.currentOutput = raw;
 
@@ -2061,7 +2064,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           uploadedImage: window.uploadedImage,
           projectId: window.activeProjectId,
           referenceSession: window.referenceSession,
-          aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, designSpecCost: payload.aiUsage?.totalCostUsd || 0, projectTotalAiCost: (window.referenceSession?.aiUsage?.totalCostUsd || 0) + (payload.aiUsage?.totalCostUsd || 0)}
+          brandSession: window.brandSession,
+          aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, brandAnalysisCost: window.brandSession?.aiUsage?.totalCostUsd || 0, designSpecCost: payload.aiUsage?.totalCostUsd || 0, projectTotalAiCost: (window.referenceSession?.aiUsage?.totalCostUsd || 0) + (window.brandSession?.aiUsage?.totalCostUsd || 0) + (payload.aiUsage?.totalCostUsd || 0)}
         }
       };
       window.projects.push(proj);
@@ -2208,7 +2212,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           tone: document.getElementById('toneSelect').value,
           raw: window.currentOutput,
           projectId: window.activeProjectId,
-          referenceSession: window.referenceSession
+          referenceSession: window.referenceSession,
+          brandSession: window.brandSession
         }
       };
       window.savedVersions.push(version);
@@ -2233,6 +2238,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     document.getElementById('toneSelect').value = version.state.tone;
     window.activeProjectId = version.state.projectId || window.activeProjectId;
     window.referenceSession = version.state.referenceSession || window.referenceSession;
+    window.brandSession = version.state.brandSession || window.brandSession;
 
     // Restore output
     window.currentOutput = version.state.raw;
@@ -2362,6 +2368,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
 
     window.activeProjectId = state.projectId || String(id);
     window.referenceSession = state.referenceSession || null;
+    window.brandSession = state.brandSession || null;
     if (window.referenceSession) window.showForensicsDiagnostics(window.referenceSession);
 
     // Restore output
