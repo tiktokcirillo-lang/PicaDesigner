@@ -78,7 +78,10 @@ const walkConstraints = (value: unknown, path: string, issues: ValidationIssue[]
     if (EVIDENCE_BACKED_NORMALIZED_KEYS.has(key) && isRecord(child)) {
       validateNormalized(child.value, `${childPath}.value`, issues);
     }
-    if (NORMALIZED_KEYS.has(key) && child !== undefined) validateNormalized(child, childPath, issues);
+    if (NORMALIZED_KEYS.has(key) && child !== undefined) {
+      if (childPath.startsWith('metrics.') && isRecord(child)) validateNormalized(child.value, `${childPath}.value`, issues);
+      else validateNormalized(child, childPath, issues);
+    }
     walkConstraints(child, childPath, issues);
   }
 };
