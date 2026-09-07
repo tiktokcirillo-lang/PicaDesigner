@@ -1108,7 +1108,7 @@ input[type="color"] {
     <div class="topbar-center">
       <div class="status-pill">
         <div class="status-dot"></div>
-        Sistema ativo · Gemini 2.0
+        Sistema ativo · OpenAI
       </div>
     </div>
     <div class="topbar-right">
@@ -1236,10 +1236,10 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       <div class="field-group">
         <div class="field-label" style="margin-bottom:4px; display: flex; align-items: center; gap: 6px;">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-          Gerador de Logo com IA
+          Gerador de Logo com IA · Em breve
         </div>
         <textarea id="logoPrompt" rows="2" placeholder="Descreva o logo (ex: Um leão minimalista dourado com fundo escuro)..." style="width: 100%; padding: 10px; border-radius: 4px; border: 1px solid var(--gold-border); background: rgba(255,255,255,0.02); color: #fff; font-family: 'DM Sans', sans-serif; font-size: 13px; resize: vertical; box-sizing: border-box; margin-bottom: 8px;"></textarea>
-        <button type="button" id="generateLogoBtn" onclick="window.generateLogo()" style="width: 100%; padding: 8px; border-radius: 4px; background: rgba(201,168,76,0.1); border: 1px solid var(--gold-border); color: var(--gold); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">✨ Gerar Logo</button>
+        <button type="button" id="generateLogoBtn" onclick="window.generateLogo()" style="width: 100%; padding: 8px; border-radius: 4px; background: rgba(201,168,76,0.1); border: 1px solid var(--gold-border); color: var(--gold); cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;">Geração temporariamente indisponível</button>
         
         <div id="logoResultContainer" style="display: none; margin-top: 12px; text-align: center; position: relative;">
           <img id="generatedLogoImg" src="" style="max-width: 100%; border-radius: 4px; border: 1px solid var(--gold-border);" />
@@ -1274,10 +1274,6 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
     <div class="sidebar-footer">
       <button class="generate-btn" id="generateBtn" onclick="generate()">
         Gerar Design
-      </button>
-      <button onclick="window.setManualApiKey()" class="manual-key-btn">
-        <i data-lucide="key" style="width: 14px; height: 14px;"></i>
-        Inserir Chave API Manualmente
       </button>
     </div>
   </aside>
@@ -1358,8 +1354,6 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 </div>
 
 <script type="module">
-  import { GoogleGenAI } from "@google/genai";
-
   const DB_NAME = 'AriaDB';
   const DB_VERSION = 1;
   const STORE_NAME = 'keyval';
@@ -1814,21 +1808,6 @@ ${formatInstructions}
 Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especificação deve ser diretamente executável por um designer.`;
   }
 
-  window.setManualApiKey = function() {
-    const currentKey = localStorage.getItem('manual_gemini_key') || '';
-    const msg = currentKey ? "Você já tem uma chave salva. Insira uma nova para substituir ou deixe em branco para remover:" : "Insira sua chave de API do Google Gemini:";
-    
-    window.showPrompt("Chave de API Manual", msg, currentKey, (key) => {
-      if (key.trim() === '') {
-        localStorage.removeItem('manual_gemini_key');
-        window.showModal("Chave Removida", "A chave manual foi removida.", null, false);
-      } else {
-        localStorage.setItem('manual_gemini_key', key.trim());
-        window.showModal("Chave Salva", "Sua chave de API foi salva no navegador com sucesso!", null, false);
-      }
-    });
-  }
-
   window.clearLogo = function() {
     document.getElementById('logoBase64').value = '';
     document.getElementById('generatedLogoImg').src = '';
@@ -1852,41 +1831,20 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       return;
     }
 
-    let apiKey = process.env.GEMINI_API_KEY;
-    try {
-      const userKey = process.env.API_KEY;
-      if (userKey) apiKey = userKey;
-    } catch (e) {}
-    
-    const manualKey = localStorage.getItem('manual_gemini_key');
-    if (manualKey) apiKey = manualKey;
-
-    if (!apiKey) {
-      window.showModal("Chave Ausente", "Nenhuma chave de API encontrada. Por favor, clique em 'Inserir Chave API Manualmente' na barra lateral.", null, false);
-      return;
-    }
-
     const tone = document.getElementById('toneSelect').value;
     const btn = document.getElementById('refineCopyBtn');
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner" style="width:10px;height:10px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:4px;"></span> Refinando...';
 
     try {
-      const ai = new GoogleGenAI({ apiKey: apiKey });
-      const prompt = `Você é um copywriter sênior especialista em design de apresentações e interfaces.
-Sua tarefa é refinar o seguinte texto para que ele fique mais claro, impactante e adequado ao tom de voz "${tone}".
-Corrija erros gramaticais, melhore a fluidez e, se necessário, estruture melhor as frases para que fiquem perfeitas para um design visual.
-Retorne APENAS o texto refinado, sem introduções ou explicações.
-
-TEXTO ORIGINAL:
-${text}`;
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: { parts: [{ text: prompt }] }
+      const response = await fetch('/api/ai/refine-copy', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({text, tone, projectId: `copy-${Date.now()}`})
       });
-
-      const refinedText = response.text || '';
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
+      const refinedText = payload.text || '';
       document.getElementById('refinedCopyText').value = refinedText.trim();
       document.getElementById('copyModal').style.display = 'flex';
     } catch (err) {
@@ -1909,49 +1867,7 @@ ${text}`;
       return;
     }
 
-    let apiKey = process.env.GEMINI_API_KEY;
-    try {
-      const userKey = process.env.API_KEY;
-      if (userKey) apiKey = userKey;
-    } catch (e) {}
-    
-    const manualKey = localStorage.getItem('manual_gemini_key');
-    if (manualKey) apiKey = manualKey;
-
-    if (!apiKey) {
-      window.showModal("Chave Ausente", "Nenhuma chave de API encontrada. Por favor, clique em 'Inserir Chave API Manualmente' na barra lateral.", null, false);
-      return;
-    }
-
-    const btn = document.getElementById('generateLogoBtn');
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner" style="width:12px;height:12px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px;"></span> Gerando...';
-
-    try {
-      const ai = new GoogleGenAI({ apiKey: apiKey });
-      const response = await ai.models.generateImages({
-          model: 'imagen-3.0-generate-002',
-          prompt: 'Logo design, vector style, flat, professional, ' + promptText,
-          config: {
-              numberOfImages: 1,
-              outputMimeType: 'image/jpeg',
-              aspectRatio: '1:1'
-          }
-      });
-      
-      const base64Image = response.generatedImages[0].image.imageBytes;
-      const dataUrl = 'data:image/jpeg;base64,' + base64Image;
-      
-      document.getElementById('logoBase64').value = dataUrl;
-      document.getElementById('generatedLogoImg').src = dataUrl;
-      document.getElementById('logoResultContainer').style.display = 'block';
-    } catch (err) {
-      console.error(err);
-      window.showModal("Erro", "Erro ao gerar logo: " + err.message, null, false);
-    } finally {
-      btn.disabled = false;
-      btn.innerHTML = '✨ Gerar Logo';
-    }
+    window.showModal("Em breve", "A geração de logos está temporariamente indisponível enquanto o novo provider de imagens é preparado.", null, false);
   };
 
   window.validateInputs = function() {
@@ -2035,34 +1951,6 @@ ${text}`;
 
     if (!window.validateInputs()) return;
 
-    if (window.aistudio && !(await window.aistudio.hasSelectedApiKey())) {
-      try {
-        await window.aistudio.openSelectKey();
-      } catch (e) {
-        window.showModal("Atenção", "É necessário selecionar uma chave de API para continuar.", null, false);
-        return;
-      }
-    }
-
-    // Initialize AI right before calling, using the injected process.env.API_KEY or GEMINI_API_KEY
-    let apiKey = process.env.GEMINI_API_KEY;
-    try {
-      const userKey = process.env.API_KEY;
-      if (userKey) apiKey = userKey;
-    } catch (e) {
-      // Ignore ReferenceError if process is not defined and no key was injected
-    }
-    
-    const manualKey = localStorage.getItem('manual_gemini_key');
-    if (manualKey) apiKey = manualKey;
-
-    if (!apiKey) {
-      window.showModal("Chave Ausente", "Nenhuma chave de API encontrada. Por favor, clique em 'Inserir Chave API Manualmente' na barra lateral.", null, false);
-      return;
-    }
-
-    const ai = new GoogleGenAI({ apiKey: apiKey });
-
     const format = document.getElementById('formatSelect').value;
     const tool = document.getElementById('toolSelect').value;
     const hasBrand = document.getElementById('hasBrand').checked;
@@ -2083,40 +1971,17 @@ ${text}`;
     const prompt = window.buildPrompt(text, tool, hasBrand, color1, color2, font, fontBody, lineHeight, letterSpacing, wordSpacing, tone, !!window.uploadedImage, format, brandLinks);
 
     try {
-      const parts = [];
-      if (window.uploadedImage) {
-        parts.push({
-          inlineData: {
-            mimeType: window.uploadedImage.mimeType,
-            data: window.uploadedImage.data
-          }
-        });
-      }
-      
-      const logoBase64 = document.getElementById('logoBase64').value;
-      if (logoBase64) {
-        // Extract base64 data from data URL
-        const base64Data = logoBase64.split(',')[1];
-        if (base64Data) {
-          parts.push({
-            inlineData: {
-              mimeType: 'image/jpeg',
-              data: base64Data
-            }
-          });
-          // Add a note to the prompt about the logo
-          parts.push({ text: "A imagem acima é o logo da marca gerado por IA. Considere suas formas, estilo e cores na sua análise e recomendações de design." });
-        }
-      }
-      
-      parts.push({ text: prompt });
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.1-pro-preview',
-        contents: { parts: parts }
+      const supportedImage = window.uploadedImage && ['image/jpeg', 'image/png', 'image/webp'].includes(window.uploadedImage.mimeType)
+        ? {kind: 'base64', mediaType: window.uploadedImage.mimeType, data: window.uploadedImage.data}
+        : undefined;
+      const response = await fetch('/api/ai/generate-design-spec', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({prompt, image: supportedImage, projectId: `design-${Date.now()}`})
       });
-
-      const raw = response.text || '';
+      const payload = await response.json();
+      if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
+      const raw = payload.text || '';
       window.currentOutput = raw;
 
       clearInterval(window.loadingInterval);
@@ -2153,12 +2018,10 @@ ${text}`;
     } catch (err) {
       clearInterval(window.loadingInterval);
       
-      if (err.message && err.message.includes('401')) {
-        window.currentOutput = 'Erro de autenticação (401). A chave de API fornecida é inválida ou não tem permissão. Clique em "Inserir Chave API Manualmente" na barra lateral para atualizar sua chave.';
+      if (err.message && err.message.includes('authentication')) {
+        window.currentOutput = 'Erro de autenticação no servidor. Verifique a configuração OPENAI_API_KEY do ambiente.';
         window.renderOutput(window.currentOutput, tool, tone);
-        window.showModal("Erro de Autenticação", "A chave de API é inválida. Por favor, insira sua chave manualmente clicando no botão na barra lateral.", () => {
-            window.setManualApiKey();
-        }, true);
+        window.showModal("Erro de Autenticação", "A integração de IA não está configurada corretamente no servidor.", null, false);
       } else {
         window.currentOutput = 'Erro ao conectar com a API. Verifique sua conexão e tente novamente.\n\nDetalhes: ' + err.message;
         window.renderOutput(window.currentOutput, tool, tone);

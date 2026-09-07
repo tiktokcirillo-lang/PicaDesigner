@@ -8,9 +8,11 @@ Browser → `POST /api/visual-forensics/analyze` → application service → pro
 
 `OPENAI_API_KEY` is read only by server infrastructure. It must never use a `VITE_` prefix, enter HTML, browser storage, telemetry, logs, errors, or response payloads. Arbitrary remote image URLs are rejected to avoid SSRF; JPEG, PNG, and WebP are accepted as bytes or base64 under the configured size limit.
 
+Legacy text features follow the same boundary. `POST /api/ai/refine-copy` calls the dedicated `refineCopy()` application service, while `POST /api/ai/generate-design-spec` calls `generateDesignSpec()`. Both use provider-neutral contracts, the OpenAI adapter, the shared budget executor, pricing registry, cost ledger, usage accounting, and sanitized typed errors. Neither endpoint accepts or returns an API key.
+
 ## Providers and models
 
-`AIProvider` is provider-neutral and supports OpenAI and deterministic mock implementations today; Gemini and other adapters can be registered later through `ProviderRouter`. `ModelRouter` centralizes model selection. Terra (`gpt-5.6-terra`) runs forensic passes and repairs. Sol (`gpt-5.6-sol`) is only a senior audit model.
+`AIProvider` is provider-neutral and supports OpenAI and deterministic mock implementations. OpenAI is the product's primary intelligence provider; the removed legacy provider is not a fallback or router option. `ModelRouter` centralizes model selection. Terra (`gpt-5.6-terra`) runs forensic passes, repairs, copy refinement, and legacy design-spec generation. Sol (`gpt-5.6-sol`) is only a senior audit model.
 
 The implementation uses the OpenAI Responses API through `openai@7.10.0`, image input data URLs, `text.format.type = json_schema`, concise output, centralized reasoning effort, stable prompt prefixes, `prompt_cache_key`, and `store: false`. Every response is parsed and then validated again by local runtime and cross-reference validators.
 
@@ -53,6 +55,8 @@ Quality is scored from 0–100 across evidence integrity, composition, hierarchy
 The smoke test exits safely with a clear message when no key is configured. Sol is disabled unless explicitly permitted. Output is limited to models, passes, quality/confidence, token categories, output utilization, budget state, and cost—never keys, base64, full prompts, or private payloads. Saved calibration contains only aggregate usage and image dimensions, is gitignored, and is written with owner-only permissions.
 
 The simulator reports LOW, NORMAL, and HIGH synthetic scenarios. `REAL_CALIBRATED` is intentionally unavailable until `data/ai-cost-calibration.json` exists; it never fabricates real-world calibration data.
+
+On Vercel, `api/index.ts` exports the same Express application as a Node.js Function. `vercel.json` routes `/api/*` to that function and grants sufficient duration for multimodal analysis. The Vite static frontend and server API are therefore deployed together without starting a persistent Express listener.
 
 ## API errors
 

@@ -1,6 +1,7 @@
 import {createSemanticExclusions} from '../../domain/art-direction';
 import {createMinimalVisualForensicsReport} from '../../domain/visual-forensics';
 import {analyzeReferenceImage} from '../../application/visual-intelligence/analyze-reference-image';
+import {generateDesignSpec, refineCopy} from '../../application/legacy-ai/text-services';
 import {detectSemanticLeakage} from '../../application/visual-intelligence/quality';
 import {createProjectBudget} from './budget/budget-policy';
 import {resolveSmokeMaxCost} from './budget/smoke-policy';
@@ -9,6 +10,7 @@ import {calculateActualCost, formatCostUsd} from './budget/cost-calculator';
 import {UnknownModelPricingError} from './budget/pricing';
 import {AIAuthenticationError, AIBudgetExceededError, AIRateLimitError, AISchemaError, AITimeoutError} from './providers/errors';
 import {MockAIProvider} from './providers/mock';
+import {UnavailableImageGenerationProvider} from './providers/image-generation';
 import {AI_DEFAULTS, type OpenAIConfig} from './providers/openai/config';
 import {OpenAIProvider} from './providers/openai/responses';
 import {normalizeOpenAIUsage} from './providers/openai/usage';
@@ -74,6 +76,15 @@ export const runAIArchitectureValidations = async (): Promise<void> => {
   let injectionPolicySeen = false; await runPipeline('injection', new MockAIProvider((request) => {injectionPolicySeen ||= request.instructions.includes('untrusted visual content'); return factory()(request);})); assert(injectionPolicySeen, 'prompt-injection policy is present in provider instructions');
   assert(new AITimeoutError('x').name === 'AITimeoutError' && new AIRateLimitError('x').name === 'AIRateLimitError', 'typed timeout and rate-limit errors');
   assert(new AIAuthenticationError('x').name === 'AIAuthenticationError' && new AIBudgetExceededError('x').name === 'AIBudgetExceededError', 'typed auth and budget errors');
+  const legacyStore = new InMemoryBudgetStore();
+  const textProvider = new MockAIProvider((request) => ({text: request.pass === 'refine_copy' ? 'Texto refinado.' : 'Especificação visual.'}));
+  const refined = await refineCopy({projectId: 'copy-service', text: 'texto original', tone: 'premium'}, {provider: textProvider, budgetStore: legacyStore, config});
+  assert(refined.text === 'Texto refinado.' && refined.aiUsage.calls[0]?.pass === 'refine_copy' && refined.aiUsage.totalCostUsd > 0, 'refine-copy uses provider and shared cost tracking');
+  const design = await generateDesignSpec({projectId: 'design-service', prompt: 'Crie uma especificação.'}, {provider: textProvider, budgetStore: legacyStore, config});
+  assert(design.text === 'Especificação visual.' && design.aiUsage.calls[0]?.pass === 'generate_design_spec', 'design specification uses provider and shared cost tracking');
+  const unavailableImages = new UnavailableImageGenerationProvider(); let imageUnavailable = false;
+  try {await unavailableImages.generate({projectId: 'logo', prompt: 'logo'});} catch {imageUnavailable = true;}
+  assert(!unavailableImages.available && imageUnavailable, 'image generation remains explicitly unavailable');
   let missingKey = false; try {new OpenAIProvider(config);} catch (error) {missingKey = error instanceof AIAuthenticationError;} assert(missingKey, 'missing API key fails safely');
   const monthlyStore = new InMemoryBudgetStore(); for (let i = 0; i < 20; i += 1) await monthlyStore.saveProject({...createMockLedger(`m${i}`), totalCostUsd: 0.75}); const month = await monthlyStore.getMonth('2026-09', 15); assert(month.spentUsd === 15 && month.remainingUsd === 0 && month.projectCount === 20, 'monthly $15 budget');
 };

@@ -1,6 +1,6 @@
 export const AI_DEFAULTS = {
-  forensicsModel: 'gpt-5.6-terra', criticModel: 'gpt-5.6-sol', requestTimeoutMs: 60_000,
-  maxRetries: 2, maxImageMb: 12, maxProjectCostUsd: 0.75, targetProjectCostUsd: 0.50,
+  forensicsModel: 'gpt-5.6-terra', criticModel: 'gpt-5.6-sol', requestTimeoutMs: 120_000,
+  maxRetries: 1, maxImageMb: 10, maxProjectCostUsd: 0.75, targetProjectCostUsd: 0.50,
   monthlyBudgetUsd: 15, solEscalationEnabled: true,
 } as const;
 

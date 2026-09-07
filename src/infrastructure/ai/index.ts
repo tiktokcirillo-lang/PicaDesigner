@@ -6,6 +6,7 @@ export * from './budget/pricing';
 export * from './budget/smoke-policy';
 export * from './providers/contract';
 export * from './providers/errors';
+export * from './providers/image-generation';
 export * from './providers/mock';
 export * from './providers/openai/config';
 export * from './providers/openai/extractor';

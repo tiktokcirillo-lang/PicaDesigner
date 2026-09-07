@@ -1,13 +1,14 @@
 import type {AnalysisDepth, AnalyticalPassId, VisualInput} from '../../domain/visual-forensics';
 
-export type AIProviderId = 'openai' | 'gemini' | 'mock';
+export type AIProviderId = 'openai' | 'mock';
 export type AIModelRole = 'forensics' | 'critic';
+export type AIApplicationTask = 'refine_copy' | 'generate_design_spec';
 export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AIUsage {inputTokens: number; cachedInputTokens: number; cacheWriteTokens: number; outputTokens: number; reasoningTokens?: number}
 export interface AIStructuredRequest {
   projectId: string;
-  pass: AnalyticalPassId | 'sol_critic' | 'repair';
+  pass: AnalyticalPassId | 'sol_critic' | 'repair' | AIApplicationTask;
   model: string;
   instructions: string;
   inputText: string;

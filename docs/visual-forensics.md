@@ -30,4 +30,4 @@ Literal content is stored in `SemanticFirewall.semanticObservations`, outside st
 
 A future adapter implements `VisualForensicsExtractor.analyze(input)`. Inputs support URL, base64, or bytes, plus context, semantic exclusions, analysis depth, and language. Provider code remains outside this domain and must return a report that passes `validateVisualForensicsReport()`.
 
-Prompt modules are split by responsibility: observation, relationships, composition, typography, color/light, inference, and critique. Builders add execution context without coupling instructions to Gemini, OpenAI, or another provider. Analytical passes explicitly preserve the sequence from raw facts to Design DNA mapping.
+Prompt modules are split by responsibility: observation, relationships, composition, typography, color/light, inference, and critique. Builders add execution context without coupling domain instructions to a specific provider. Analytical passes explicitly preserve the sequence from raw facts to Design DNA mapping.

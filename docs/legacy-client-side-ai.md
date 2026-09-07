@@ -1,14 +1,12 @@
-# Legacy Client-Side AI
+# Removed Legacy Client-Side AI
 
-The existing application still contains Gemini client-side access. This was intentionally preserved during Phase 3.
+Gemini was removed in Phase 3.2. It is no longer a runtime provider, fallback, dependency, browser import, model label, environment variable, or client-side secret source.
 
-Current legacy locations:
+The former text features now use the server boundary:
 
-- `vite.config.ts` injects `GEMINI_API_KEY` into browser-build code through `process.env.GEMINI_API_KEY`.
-- `index.html` imports `GoogleGenAI` and initializes it in browser code.
-- `index.html` calls `ai.models.generateContent()` for analysis/content operations.
-- `index.html` calls `ai.models.generateImages()` for image generation.
+- Refine Copy → `POST /api/ai/refine-copy` → `refineCopy()` → `BudgetedAIExecutor` → OpenAI Responses API.
+- Generate Design → `POST /api/ai/generate-design-spec` → `generateDesignSpec()` → `BudgetedAIExecutor` → OpenAI Responses API.
 
-This pattern exposes provider access to the client boundary and should be migrated to an internal server API in a later phase. The new OpenAI infrastructure does not reuse it: OpenAI configuration, SDK calls, budget enforcement, provider routing, and telemetry all live in server/application modules that are not imported by the Vite frontend.
+Logo generation is temporarily unavailable. The server-independent `ImageGenerationProvider` contract is ready for a future OpenAI image adapter, but no paid image call is triggered in this phase.
 
-Do not remove the Gemini path until feature parity and a controlled migration plan exist.
+All AI credentials remain server-side. Historical browser key controls and browser storage access were removed.
