@@ -4,5 +4,6 @@ dist/
 coverage/
 .DS_Store
 *.log
+data/ai-cost-calibration.json
 .env*
 !.env.example

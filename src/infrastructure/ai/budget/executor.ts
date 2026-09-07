@@ -16,11 +16,11 @@ export class BudgetedAIExecutor {
     this.monthlyRemainingUsd = Math.max(0, this.monthlyRemainingUsd - costUsd);
     if (this.ledger.totalCostUsd + costUsd > this.hardLimitUsd) {
       // The call already completed; keep the true ledger and block every subsequent call.
-      this.ledger = appendModelCall(this.ledger, {...response.usage, requestId: response.requestId, pass: request.pass, model: response.model, costUsd, durationMs: response.durationMs, repairAttempt: request.repairAttempt ?? false});
+      this.ledger = appendModelCall(this.ledger, {...response.usage, requestId: response.requestId, pass: request.pass, model: response.model, costUsd, durationMs: response.durationMs, maxOutputTokens: request.maxOutputTokens, outputTokenUtilization: request.maxOutputTokens > 0 ? response.usage.outputTokens / request.maxOutputTokens : 0, repairAttempt: request.repairAttempt ?? false});
       await this.store.saveProject(this.ledger);
       return response;
     }
-    this.ledger = appendModelCall(this.ledger, {...response.usage, requestId: response.requestId, pass: request.pass, model: response.model, costUsd, durationMs: response.durationMs, repairAttempt: request.repairAttempt ?? false});
+    this.ledger = appendModelCall(this.ledger, {...response.usage, requestId: response.requestId, pass: request.pass, model: response.model, costUsd, durationMs: response.durationMs, maxOutputTokens: request.maxOutputTokens, outputTokenUtilization: request.maxOutputTokens > 0 ? response.usage.outputTokens / request.maxOutputTokens : 0, repairAttempt: request.repairAttempt ?? false});
     await this.store.saveProject(this.ledger);
     return response;
   }

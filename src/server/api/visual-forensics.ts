@@ -1,7 +1,7 @@
 import {Router} from 'express';
 import {analyzeReferenceImage} from '../../application/visual-intelligence/analyze-reference-image';
 import {InMemoryBudgetStore} from '../../infrastructure/ai/budget/budget-tracker';
-import {safeErrorMessage} from '../../infrastructure/ai/providers/errors';
+import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLimitError, AISchemaError, AITimeoutError, AnalysisPipelineError, UnsupportedAIInputError, safeErrorMessage} from '../../infrastructure/ai/providers/errors';
 import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config';
 import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses';
 import type {VisualForensicsInput} from '../../domain/visual-forensics';
@@ -17,7 +17,14 @@ export const createVisualForensicsRouter = (): Router => {
       const result = await analyzeReferenceImage({image: body.image, projectId: body.projectId, analysisDepth: body.analysisDepth, semanticExclusions: body.semanticExclusions, context: body.context, language: body.language}, {provider: new OpenAIProvider(config), budgetStore, config});
       return response.json(result);
     } catch (error) {
-      return response.status(500).json({error: safeErrorMessage(error)});
+      const status = error instanceof UnsupportedAIInputError ? 400
+        : error instanceof AIAuthenticationError ? 401
+        : error instanceof AIBudgetExceededError ? 402
+        : error instanceof AIRateLimitError ? 429
+        : error instanceof AITimeoutError ? 504
+        : error instanceof AISchemaError || error instanceof AnalysisPipelineError ? 422
+        : error instanceof AIProviderError ? 500 : 500;
+      return response.status(status).json({error: safeErrorMessage(error)});
     }
   });
   return router;

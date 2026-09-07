@@ -14,7 +14,7 @@ Browser → `POST /api/visual-forensics/analyze` → application service → pro
 
 The implementation uses the OpenAI Responses API through `openai@7.10.0`, image input data URLs, `text.format.type = json_schema`, concise output, centralized reasoning effort, stable prompt prefixes, `prompt_cache_key`, and `store: false`. Every response is parsed and then validated again by local runtime and cross-reference validators.
 
-Pass output currently uses a strict Structured Outputs envelope containing a JSON patch. The internal patch is still validated by the complete local `VisualForensicsReport` validator after each merge. A future schema-generation phase should replace the string envelope with strict pass-specific JSON schemas for deeper provider-side enforcement.
+Each model pass has its own strict JSON Schema with required properties and `additionalProperties: false`; there is no JSON-inside-a-string envelope. Nullable fields are explicit where a pass may lack evidence. Every structured response is still normalized, merged into the accumulated report, and checked by the complete local runtime and cross-reference validators before the next pass.
 
 ## Multi-pass discipline
 
@@ -24,9 +24,9 @@ Visible instructions inside an image are untrusted data. Stable developer instru
 
 ## Pricing, usage, and reasoning tokens
 
-The versioned pricing registry stores Terra and Sol input, cached-input, and output rates. Actual cost uses API usage fields. Cached input is subtracted from uncached input before applying its lower rate. The Responses API reports reasoning tokens inside `output_tokens_details.reasoning_tokens`; they are recorded separately for telemetry but already belong to `output_tokens`, so they are not charged twice.
+The versioned pricing registry stores Terra and Sol input, cached-input, cache-write, and output rates. Cache writes cost $2.50/M tokens for Terra and $5.00/M for Sol. Actual cost uses API usage fields. Cached input and cache-write tokens are each subtracted from ordinary input before their respective rates are applied, so no input token is charged twice. Missing cache-write usage is normalized to zero. The Responses API reports reasoning tokens inside `output_tokens_details.reasoning_tokens`; they are recorded separately for telemetry but already belong to `output_tokens`, so they are not charged twice.
 
-Costs retain floating-point precision internally and are rounded only for display. Each call records model, pass, input/cached/output/reasoning tokens, cost, duration, and repair status. The project ledger aggregates calls without early rounding.
+Costs retain floating-point precision internally and are rounded only for display. Each call records model, pass, input/cached/cache-write/output/reasoning tokens, configured maximum output, output utilization, cost, duration, and repair status. The project ledger aggregates calls without early rounding. Telemetry can therefore reveal passes that routinely reserve excessive output without exposing prompts or image data.
 
 ## Budget policy
 
@@ -42,8 +42,18 @@ Quality is scored from 0–100 across evidence integrity, composition, hierarchy
 
 ## Running
 
-- Server: `npm run server`
+- API server: `npm run server`
+- Vite frontend: `npm run dev` (development requests under `/api` are proxied to `http://localhost:3001`)
 - Cost simulation: `npm run ai:cost-sim`
 - Optional live check: `npm run openai:smoke -- ./path/to/image.png`
+- Explicit Sol permission: add `--allow-sol`
+- Per-run guard: add `--max-cost 0.50` (default $0.50; values above the $0.75 hard cap are rejected)
+- Save non-sensitive local calibration: add `--save-calibration`
 
-The smoke test exits safely with a clear message when no key is configured. It disables Sol and prints only models, passes, confidence, a small DesignDNA summary, tokens, and cost—never keys, base64, full prompts, or private payloads.
+The smoke test exits safely with a clear message when no key is configured. Sol is disabled unless explicitly permitted. Output is limited to models, passes, quality/confidence, token categories, output utilization, budget state, and cost—never keys, base64, full prompts, or private payloads. Saved calibration contains only aggregate usage and image dimensions, is gitignored, and is written with owner-only permissions.
+
+The simulator reports LOW, NORMAL, and HIGH synthetic scenarios. `REAL_CALIBRATED` is intentionally unavailable until `data/ai-cost-calibration.json` exists; it never fabricates real-world calibration data.
+
+## API errors
+
+The HTTP adapter maps unsupported input to 400, authentication to 401, exhausted project budget to 402, rate limiting to 429, validation/pipeline failures to 422, timeouts to 504, and unexpected provider failures to 500. Responses are sanitized and never include authorization headers, image payloads, keys, or full upstream bodies.
