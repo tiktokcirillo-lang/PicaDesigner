@@ -3,6 +3,8 @@ export * from './budget/budget-tracker.js';
 export * from './budget/cost-calculator.js';
 export * from './budget/executor.js';
 export * from './budget/pricing.js';
+export * from './budget/project-coordinator.js';
+export * from './budget/runtime-store.js';
 export * from './budget/smoke-policy.js';
 export * from './providers/contract.js';
 export * from './providers/errors.js';

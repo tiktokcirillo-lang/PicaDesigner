@@ -10,6 +10,7 @@
     "openai:smoke": "tsx scripts/openai-smoke.ts",
     "reference:validation": "tsx src/application/reference-intelligence/reference-intelligence.validation.ts",
     "brand:validation": "tsx src/domain/brand-intelligence/brand-intelligence.validation.ts",
+    "creative:validation": "tsx src/domain/creative-direction/creative-direction.validation.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

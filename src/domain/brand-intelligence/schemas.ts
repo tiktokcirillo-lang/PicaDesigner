@@ -75,7 +75,7 @@ export const validateBrandIntelligenceSession = (value: unknown): BrandValidatio
 export const validateCompatibilityReport = (value: unknown): BrandValidationResult<BrandReferenceCompatibilityReport> => {
   const issues: string[] = [];
   if (!object(value)) return {success: false, issues: ['compatibility report must be an object']};
-  for (const key of ['compatibilityScore', 'brandDriftRisk', 'referenceImitationRisk']) if (!normalized(value[key])) issues.push(`${key} must be 0–1`);
+  for (const key of ['compatibilityScore', 'baselineBrandDriftRisk', 'baselineReferenceImitationRisk']) if (!normalized(value[key])) issues.push(`${key} must be 0–1`);
   if (!Array.isArray(value.adaptationPlan)) issues.push('adaptationPlan is required');
   for (const action of (value.adaptationPlan as Array<{action?: unknown; confidence?: unknown}> | undefined) ?? []) {
     if (!['preserve', 'translate', 'reinterpret', 'override', 'reject'].includes(String(action.action))) issues.push('adaptation action is invalid');

@@ -1355,6 +1355,8 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 
 <script type="module">
   import {analyzeVisualReference, invalidateReferenceIntelligence} from '/src/client/reference-intelligence.ts';
+  import {ensureCreativeDirection} from '/src/client/creative-direction.ts';
+  import {createBrandIntelligenceSession} from '/src/domain/brand-intelligence/index.ts';
 
   const DB_NAME = 'AriaDB';
   const DB_VERSION = 1;
@@ -1425,6 +1427,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.uploadedImage = null;
   window.referenceSession = null;
   window.brandSession = null;
+  window.creativeDirection = null;
   window.activeProjectId = crypto.randomUUID();
   window.referenceAnalysisDepth = 'standard';
 
@@ -2017,6 +2020,15 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         if (window.referenceSession.status !== 'ready') throw new Error('Não foi possível analisar a referência visual com qualidade suficiente. Envie uma referência mais clara.');
         window.showForensicsDiagnostics(window.referenceSession);
       }
+      const brandInput = hasBrand ? {colors: [color1, color2].filter(Boolean), headlineFont: font, bodyFont: fontBody, lineHeight, letterSpacing, wordSpacing, url: brandLinks} : undefined;
+      window.brandSession = createBrandIntelligenceSession(brandInput, window.activeProjectId, hasBrand ? window.brandSession : undefined);
+      try {
+        window.creativeDirection = await ensureCreativeDirection({projectId: window.activeProjectId, copy: text, format, destinationTool: tool, tone, brandIntelligence: window.brandSession, referenceIntelligence: window.referenceSession, existingSession: window.creativeDirection});
+      } catch (error) {
+        throw new Error('Não foi possível construir uma direção criativa válida. ' + (error instanceof Error ? error.message : 'Tente novamente.'));
+      }
+      if (window.creativeDirection.status !== 'ready') throw new Error('Não foi possível construir uma direção criativa válida.');
+      window.showCreativeDiagnostics(window.creativeDirection);
       const response = await fetch('/api/ai/generate-design-spec', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -2026,9 +2038,10 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           format,
           destinationTool: tool,
           tone,
-          brandInput: hasBrand ? {colors: [color1, color2].filter(Boolean), headlineFont: font, bodyFont: fontBody, lineHeight, letterSpacing, wordSpacing, url: brandLinks} : undefined,
+          brandInput,
           referenceIntelligence: window.referenceSession,
-          brandIntelligence: hasBrand ? window.brandSession : undefined
+          brandIntelligence: window.brandSession,
+          creativeDirection: window.creativeDirection
         })
       });
       const payload = await window.parseApiResponse(response);
@@ -2065,7 +2078,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           projectId: window.activeProjectId,
           referenceSession: window.referenceSession,
           brandSession: window.brandSession,
-          aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, brandAnalysisCost: window.brandSession?.aiUsage?.totalCostUsd || 0, designSpecCost: payload.aiUsage?.totalCostUsd || 0, projectTotalAiCost: (window.referenceSession?.aiUsage?.totalCostUsd || 0) + (window.brandSession?.aiUsage?.totalCostUsd || 0) + (payload.aiUsage?.totalCostUsd || 0)}
+          creativeDirection: window.creativeDirection,
+          aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, brandAnalysisCost: window.brandSession?.aiUsage?.totalCostUsd || 0, creativeDirectionCost: window.creativeDirection?.cost || 0, designSpecCost: payload.stageCostUsd || 0, projectTotalAiCost: payload.aiUsage?.totalCostUsd || 0}
         }
       };
       window.projects.push(proj);
@@ -2156,6 +2170,21 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     panel.textContent = JSON.stringify({sessionId: session.sessionId, qualityScore: session.quality?.score, overallConfidence: session.forensics?.overallConfidence, evidenceQuality: session.forensics?.evidenceQuality?.overall, speculationRisk: session.forensics?.evidenceQuality?.speculationRisk, designDNA: {confidence: session.designDNA?.confidence, availableDomains: Object.keys(session.designDNA || {}).filter(key => !['evidence', 'semanticExclusions'].includes(key))}, aiCost: session.aiUsage?.totalCostUsd}, null, 2);
   };
 
+  window.showCreativeDiagnostics = function(session) {
+    if (new URLSearchParams(window.location.search).get('debug') !== 'creative') return;
+    let panel = document.getElementById('creativeDebug');
+    if (!panel) {
+      panel = document.createElement('pre');
+      panel.id = 'creativeDebug';
+      panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;max-width:420px;max-height:50vh;overflow:auto;padding:12px;background:#111;color:#ddd;border:1px solid #555;font:11px monospace;white-space:pre-wrap;';
+      document.body.appendChild(panel);
+    }
+    const distance = (a, b) => Object.keys(a).reduce((sum, key) => sum + Math.abs(a[key] - b[key]), 0) / Object.keys(a).length;
+    const routeDistances = [];
+    for (let i = 0; i < session.routes.length; i++) for (let j = i + 1; j < session.routes.length; j++) routeDistances.push({routes: [session.routes[i].id, session.routes[j].id], distance: distance(session.routes[i].divergenceVector, session.routes[j].divergenceVector)});
+    panel.textContent = JSON.stringify({selectedRoute: session.selectedRoute?.internalName, routeScores: session.evaluations, routeDistances, creativeQuality: session.quality, creativeDirectionCost: session.cost}, null, 2);
+  };
+
   window.parseOutput = function(raw, defs) {
     const result = [];
     const lines = raw.split('\n');
@@ -2213,7 +2242,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           raw: window.currentOutput,
           projectId: window.activeProjectId,
           referenceSession: window.referenceSession,
-          brandSession: window.brandSession
+          brandSession: window.brandSession,
+          creativeDirection: window.creativeDirection
         }
       };
       window.savedVersions.push(version);
@@ -2239,6 +2269,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.activeProjectId = version.state.projectId || window.activeProjectId;
     window.referenceSession = version.state.referenceSession || window.referenceSession;
     window.brandSession = version.state.brandSession || window.brandSession;
+    window.creativeDirection = version.state.creativeDirection || window.creativeDirection;
 
     // Restore output
     window.currentOutput = version.state.raw;
@@ -2369,7 +2400,9 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.activeProjectId = state.projectId || String(id);
     window.referenceSession = state.referenceSession || null;
     window.brandSession = state.brandSession || null;
+    window.creativeDirection = state.creativeDirection || null;
     if (window.referenceSession) window.showForensicsDiagnostics(window.referenceSession);
+    if (window.creativeDirection) window.showCreativeDiagnostics(window.creativeDirection);
 
     // Restore output
     window.currentOutput = state.raw;

@@ -1,6 +1,7 @@
 import {buildReferenceDesignContext} from '../reference-intelligence/design-context.js';
 import type {DesignDecision, GenerateDesignSpecRequest} from './types.js';
 import {adaptReferenceDNA, buildBrandDesignContext, createBrandIntelligenceSession, resolveBrandReferenceCompatibility, validateBrandIntelligenceSession, type AdaptedDesignConstraints, type BrandIntelligenceSession, type BrandReferenceCompatibilityReport} from '../../domain/brand-intelligence/index.js';
+import {validateCreativeDirectionSession} from '../../domain/creative-direction/index.js';
 
 export interface BuiltDesignSpecPrompt {instructions: string; input: string; decisions: DesignDecision[]}
 export interface ResolvedBrandDesign {session: BrandIntelligenceSession; compatibility?: BrandReferenceCompatibilityReport; adapted?: AdaptedDesignConstraints; context?: ReturnType<typeof buildBrandDesignContext>}
@@ -21,22 +22,28 @@ export class DesignSpecPromptBuilder {
   }
 
   build(request: GenerateDesignSpecRequest, brand = this.resolveBrand(request)): BuiltDesignSpecPrompt {
+    if (request.creativeDirection && (!validateCreativeDirectionSession(request.creativeDirection) || request.creativeDirection.projectId !== request.projectId || request.creativeDirection.status !== 'ready' || !request.creativeDirection.selectedRoute)) throw new Error('Não foi possível construir uma direção criativa válida.');
     const referenceContext = request.referenceIntelligence ? buildReferenceDesignContext(request.referenceIntelligence) : undefined;
+    const route = request.creativeDirection?.selectedRoute;
     const modules = {
       projectContext: {copy: request.copy, tone: request.tone, destinationTool: request.destinationTool},
       formatRules: {format: request.format, instruction: 'Respect exact dimensions, aspect ratio, safe areas, and destination-tool constraints.'},
       brandContext: brand.context,
       referenceDesignDNA: referenceContext,
+      creativeDirection: route ? {concept: route.concept, creativeDevice: route.creativeDevice, heroStrategy: route.heroStrategy, compositionStrategy: route.compositionStrategy, hierarchyStrategy: route.hierarchyStrategy, typographyBehavior: route.typographyBehavior, colorBehavior: route.colorBehavior, imageStrategy: route.imageStrategy, brandExpression: route.brandExpression, formatAdaptability: route.formatAdaptability, provenance: route.provenance} : undefined,
       copyHierarchy: {instruction: 'Derive title, subtitle, body, data, and CTA hierarchy only when present in the supplied copy.'},
     };
     const decisions: DesignDecision[] = [
       {decision: `Respect output format ${request.format}.`, domain: 'format', source: 'format'},
-      {decision: `Communicate using the ${request.tone} tone.`, domain: 'communication', source: 'communication'},
+      {decision: `Communicate using the ${request.tone} tone.`, domain: 'communication', source: 'communication_strategy'},
+      ...(route ? [{decision: `Execute the approved core idea: ${route.concept.coreIdea}`, domain: 'concept', source: 'creative_concept' as const, confidence: route.confidence}, {decision: `Use the approved creative device: ${route.creativeDevice.name}`, domain: 'creative_device', source: 'creative_device' as const, confidence: route.confidence}] : []),
       ...(referenceContext ? [{decision: 'Use reference structural DNA according to confidence authority.', domain: 'art_direction', source: 'reference_structure' as const, confidence: referenceContext.confidence}] : []),
       ...(brand.session.brandDNA?.hardConstraints.map(({domain, rule, confidence}) => ({decision: rule, domain, source: 'brand_hard_constraint' as const, confidence})) ?? []),
       ...(brand.session.brandDNA?.softPreferences.map(({domain, rule, confidence}) => ({decision: rule, domain, source: 'brand_soft_preference' as const, confidence})) ?? []),
+      ...(brand.session.brandDNA?.brandDistinctiveness?.map(({type, description, confidence}) => ({decision: description, domain: type, source: 'brand_distinctive_asset' as const, confidence})) ?? []),
       ...(brand.compatibility?.adaptationPlan.map(({domain, instruction, confidence}) => ({decision: instruction, domain, source: 'adaptation' as const, confidence})) ?? []),
     ];
-    return {instructions: [BASE_ART_DIRECTOR_POLICY, REFERENCE_POLICY, OUTPUT_CONTRACT].join('\n\n'), input: JSON.stringify(modules), decisions};
+    const authority = route ? 'The selected Creative Direction route is the conceptual authority. Execute it faithfully. Do not replace its core idea, creative device, hero strategy, or brand adaptation logic. Resolve only execution details and preserve approved copy.' : '';
+    return {instructions: [BASE_ART_DIRECTOR_POLICY, REFERENCE_POLICY, authority, OUTPUT_CONTRACT].filter(Boolean).join('\n\n'), input: JSON.stringify(modules), decisions};
   }
 }

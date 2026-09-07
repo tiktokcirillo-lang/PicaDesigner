@@ -52,7 +52,9 @@ export const resolveBrandReferenceCompatibility = (brand: BrandDNA, reference?: 
   if (brand.logoSystem) {requiredBrandOverrides.push('Preserve the official logo asset without transformations.'); rejectedReferenceTraits.push('reference logo identity and logo treatment');}
   rejectedReferenceTraits.push(TRANSFER_PRINCIPLES_NOT_IDENTITY);
   const compatibilityScore = clamp(1 - conflicts.length * 0.15 - rejectedReferenceTraits.length * 0.03);
-  return {compatibilityScore, compatiblePatterns, adaptablePatterns, conflicts, rejectedReferenceTraits, requiredBrandOverrides, adaptationPlan, brandDriftRisk: calculateBrandDriftRisk(brand, {}), referenceImitationRisk: calculateReferenceImitationRisk({sameExactColors: referenceColors.length > 0 && referenceColors.every((value) => approvedColors.includes(value))})};
+  const baselineBrandDriftRisk = calculateBrandDriftRisk(brand, {});
+  const baselineReferenceImitationRisk = calculateReferenceImitationRisk({sameExactColors: referenceColors.length > 0 && referenceColors.every((value) => approvedColors.includes(value))});
+  return {compatibilityScore, compatiblePatterns, adaptablePatterns, conflicts, rejectedReferenceTraits, requiredBrandOverrides, adaptationPlan, baselineBrandDriftRisk, baselineReferenceImitationRisk, brandDriftRisk: baselineBrandDriftRisk, referenceImitationRisk: baselineReferenceImitationRisk};
 };
 
 export const adaptReferenceDNA = (reference: DesignDNA | undefined, brand: BrandDNA, report = resolveBrandReferenceCompatibility(brand, reference)): AdaptedDesignConstraints => ({

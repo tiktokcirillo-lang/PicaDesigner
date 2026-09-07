@@ -6,6 +6,7 @@ import type {VisualInput} from '../../domain/visual-forensics/index.js';
 import {DesignSpecPromptBuilder} from '../design-spec/prompt-builder.js';
 import type {DesignSpecificationResult, GenerateDesignSpecRequest} from '../design-spec/types.js';
 import {isReferenceQualityUsable, validateReferenceSession} from '../reference-intelligence/create-reference-intelligence.js';
+import {fingerprintCreativeDirection} from '../creative-direction/create-creative-direction.js';
 
 const TEXT_RESULT_SCHEMA = {
   type: 'object',
@@ -15,7 +16,7 @@ const TEXT_RESULT_SCHEMA = {
 } as const;
 
 interface Dependencies {provider: AIProvider; budgetStore: BudgetStore; config: OpenAIConfig}
-interface TextTaskResult {text: string; aiUsage: AIUsageResult}
+interface TextTaskResult {text: string; aiUsage: AIUsageResult; stageCostUsd: number}
 
 const resultFromLedger = (ledger: ReturnType<typeof createLedger>, config: OpenAIConfig): AIUsageResult => ({
   inputTokens: ledger.inputTokens,
@@ -31,7 +32,7 @@ const resultFromLedger = (ledger: ReturnType<typeof createLedger>, config: OpenA
 });
 
 const executeTextTask = async (input: {projectId: string; task: 'refine_copy' | 'generate_design_spec'; instructions: string; prompt: string; image?: VisualInput; maxOutputTokens: number}, dependencies: Dependencies): Promise<TextTaskResult> => {
-  const ledger = createLedger(input.projectId);
+  const ledger = await dependencies.budgetStore.getProject(input.projectId) ?? createLedger(input.projectId);
   const executor = new BudgetedAIExecutor(dependencies.provider, dependencies.budgetStore, dependencies.config.maxProjectCostUsd, ledger);
   const response = await executor.execute<{text: string}>({
     projectId: input.projectId,
@@ -48,7 +49,7 @@ const executeTextTask = async (input: {projectId: string; task: 'refine_copy' | 
     ? {inputTokens: 3_000, outputTokens: 1_500}
     : {inputTokens: input.image ? 15_000 : 8_000, outputTokens: 9_000});
   const finalLedger = executor.getLedger();
-  return {text: response.data.text.trim(), aiUsage: resultFromLedger(finalLedger, dependencies.config)};
+  return {text: response.data.text.trim(), aiUsage: resultFromLedger(finalLedger, dependencies.config), stageCostUsd: finalLedger.totalCostUsd - ledger.totalCostUsd};
 };
 
 export const refineCopy = (input: {projectId: string; text: string; tone: string}, dependencies: Dependencies): Promise<TextTaskResult> => executeTextTask({
@@ -63,6 +64,10 @@ export const generateDesignSpec = async (input: GenerateDesignSpecRequest, depen
   if (input.referenceIntelligence) {
     if (!validateReferenceSession(input.referenceIntelligence, input.projectId)) throw new Error('Invalid or incompatible reference intelligence session.');
     if (!isReferenceQualityUsable(input.referenceIntelligence)) throw new Error('Reference intelligence quality is below the minimum threshold.');
+  }
+  if (input.creativeDirection) {
+    const fingerprint = await fingerprintCreativeDirection({projectId: input.projectId, copy: input.copy, format: input.format, destinationTool: input.destinationTool, tone: input.tone, brandIntelligence: input.brandIntelligence, referenceIntelligence: input.referenceIntelligence, adaptedDesignConstraints: input.adaptedDesignConstraints});
+    if (input.creativeDirection.inputFingerprint !== fingerprint) throw new Error('Não foi possível construir uma direção criativa válida.');
   }
   const built = input.legacyPrompt
     ? {instructions: 'Produce a professional Portuguese visual design specification. Return only the completed specification in the structured text field.', input: input.legacyPrompt, decisions: []}
@@ -80,5 +85,6 @@ export const generateDesignSpec = async (input: GenerateDesignSpecRequest, depen
     adaptedDesignConstraints: brand.adapted,
     qualityMetadata: {referenceQualityScore: input.referenceIntelligence?.quality?.score, referenceConfidence: input.referenceIntelligence?.forensics?.overallConfidence, decisionProvenance: finalPrompt.decisions},
     aiUsage: result.aiUsage,
+    stageCostUsd: result.stageCostUsd,
   };
 };

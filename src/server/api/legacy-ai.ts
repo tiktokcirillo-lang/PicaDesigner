@@ -1,13 +1,12 @@
 import {Router, type Response} from 'express';
 import {generateDesignSpec, refineCopy} from '../../application/legacy-ai/text-services.js';
-import {InMemoryBudgetStore} from '../../infrastructure/ai/budget/budget-tracker.js';
+import {applicationBudgetStore as budgetStore} from '../../infrastructure/ai/budget/runtime-store.js';
 import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLimitError, AISchemaError, AITimeoutError, UnsupportedAIInputError, safeErrorMessage} from '../../infrastructure/ai/providers/errors.js';
 import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config.js';
 import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses.js';
 import type {VisualInput} from '../../domain/visual-forensics/index.js';
 import type {GenerateDesignSpecRequest} from '../../application/design-spec/index.js';
 
-const budgetStore = new InMemoryBudgetStore();
 const sendError = (response: Response, error: unknown) => {
   const status = error instanceof UnsupportedAIInputError ? 400
     : error instanceof AIAuthenticationError ? 401
@@ -46,7 +45,7 @@ export const createLegacyAIRouter = (): Router => {
       if (!body.format?.trim() || body.format.length > 120) return response.status(400).json({error: 'format is required'});
       if (!body.destinationTool?.trim() || body.destinationTool.length > 120) return response.status(400).json({error: 'destinationTool is required'});
       if (!body.tone?.trim() || body.tone.length > 200) return response.status(400).json({error: 'tone is required'});
-      return response.json(await generateDesignSpec({projectId, copy: body.copy, format: body.format, destinationTool: body.destinationTool, tone: body.tone, brandInput: body.brandInput, brandIntelligence: body.brandIntelligence, referenceIntelligence: body.referenceIntelligence}, dependencies()));
+      return response.json(await generateDesignSpec({projectId, copy: body.copy, format: body.format, destinationTool: body.destinationTool, tone: body.tone, brandInput: body.brandInput, brandIntelligence: body.brandIntelligence, referenceIntelligence: body.referenceIntelligence, adaptedDesignConstraints: body.adaptedDesignConstraints, creativeDirection: body.creativeDirection}, dependencies()));
     } catch (error) {return sendError(response, error);}
   });
   return router;

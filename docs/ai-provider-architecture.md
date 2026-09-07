@@ -38,6 +38,8 @@ Sol escalation is deterministic: low quality score, weak evidence, excessive spe
 
 `BudgetStore` is separated from `InMemoryBudgetStore`. The latter is process-local and non-persistent; restarting the server loses monthly and project totals. Production deployment requires a transactional persistent store before budget enforcement can be considered durable across instances.
 
+All application endpoints share one process-level store and load a prior ledger by `projectId`; `ProjectAIBudgetCoordinator` centralizes that lifecycle for future services. This prevents a stage change from resetting the cap within one warm process. `DurableBudgetStore` is the explicit extension contract for atomic cross-instance enforcement because a Vercel cold start can still create a fresh in-memory process.
+
 ## Quality and semantic firewall
 
 Quality is scored from 0–100 across evidence integrity, composition, hierarchy, typography, color, physical plausibility, semantic separation, Anti-AI detection, and confidence calibration. The semantic firewall remains in the forensics domain. Excluded text such as “50% OFF” may contribute anonymous text-region geometry, but its promotional meaning cannot enter DesignDNA.
