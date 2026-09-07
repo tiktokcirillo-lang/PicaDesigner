@@ -1,5 +1,7 @@
 import {
   createSemanticExclusions,
+  DESIGN_PRINCIPLES,
+  ANTI_AI_SIGNAL_IDS,
   isBoundingBox,
   validateSemanticExclusions,
   validateVisualEvidence,
@@ -98,6 +100,8 @@ const validateReferences = (report: Record<string, unknown>, issues: ValidationI
   for (const [collectionName, collection] of [['inferredPrinciples', report.inferredPrinciples], ['antiAiFindings', report.antiAiFindings], ['contradictions', report.contradictions]] as const) {
     if (!Array.isArray(collection)) continue;
     collection.filter(isRecord).forEach((entry, index) => {
+      if (collectionName === 'inferredPrinciples' && !DESIGN_PRINCIPLES.some(({id}) => id === entry.principleId)) issue(issues, `${collectionName}[${index}].principleId`, `Unknown design principle ID: ${String(entry.principleId)}.`);
+      if (collectionName === 'antiAiFindings' && !ANTI_AI_SIGNAL_IDS.includes(entry.mappedKnowledgeSignalId as (typeof ANTI_AI_SIGNAL_IDS)[number])) issue(issues, `${collectionName}[${index}].mappedKnowledgeSignalId`, `Unknown Anti-AI signal ID: ${String(entry.mappedKnowledgeSignalId)}.`);
       for (const evidenceId of Array.isArray(entry.evidenceIds) ? entry.evidenceIds : []) {
         if (!observationIds.has(evidenceId)) issue(issues, `${collectionName}[${index}].evidenceIds`, `Unknown observation ID: ${String(evidenceId)}.`);
       }

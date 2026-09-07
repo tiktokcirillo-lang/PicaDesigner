@@ -1,0 +1,68 @@
+import {createSemanticExclusions} from '../../domain/art-direction';
+import {createMinimalVisualForensicsReport} from '../../domain/visual-forensics';
+import {analyzeReferenceImage} from '../../application/visual-intelligence/analyze-reference-image';
+import {detectSemanticLeakage} from '../../application/visual-intelligence/quality';
+import {createProjectBudget} from './budget/budget-policy';
+import {InMemoryBudgetStore} from './budget/budget-tracker';
+import {calculateActualCost, formatCostUsd} from './budget/cost-calculator';
+import {UnknownModelPricingError} from './budget/pricing';
+import {AIAuthenticationError, AIBudgetExceededError, AIRateLimitError, AISchemaError, AITimeoutError} from './providers/errors';
+import {MockAIProvider} from './providers/mock';
+import {AI_DEFAULTS, type OpenAIConfig} from './providers/openai/config';
+import {OpenAIProvider} from './providers/openai/responses';
+import type {AIStructuredRequest} from './types';
+
+const assert = (condition: boolean, message: string): void => {if (!condition) throw new Error(`AI architecture validation failed: ${message}`);};
+const config: OpenAIConfig = {apiKey: '', forensicsModel: AI_DEFAULTS.forensicsModel, criticModel: AI_DEFAULTS.criticModel, requestTimeoutMs: 1000, maxRetries: 0, maxImageMb: 12, maxProjectCostUsd: 0.75, targetProjectCostUsd: 0.5, monthlyBudgetUsd: 15, solEscalationEnabled: true};
+const exclusions = createSemanticExclusions(); exclusions.writtenText = {exclude: true};
+const rawPatch = {canvas: {width: 1000, height: 1000, aspectRatio: 1, orientation: 'square', visualCenter: {x: 0.5, y: 0.5}, opticalCenter: {point: {x: 0.5, y: 0.5}, confidence: 0.9, evidenceIds: ['obs-1']}}, observations: [{id: 'obs-1', domain: 'composition', observation: 'A large dark rectangular region occupies the center.', confidence: 0.95, inferenceLevel: 'observed', relatedRegionIds: ['region-1']}], regions: [{id: 'region-1', type: 'graphic', boundingBox: {x: 0.2, y: 0.2, width: 0.6, height: 0.6}, areaRatio: 0.36, centroid: {x: 0.5, y: 0.5}, visualWeight: 0.9, salience: 0.9, edgeProximity: {top: 0.2, right: 0.2, bottom: 0.2, left: 0.2}, contrastAgainstEnvironment: 0.9, confidence: 0.95}], semanticContent: {semanticObservations: [{id: 'sem-1', category: 'text_content', description: '50% OFF', confidence: 0.9}], excludedObservationIds: ['sem-1'], policy: exclusions}, semanticExclusions: exclusions};
+const domainPatch = {compositionAnalysis: {symmetryScore: 0.9, asymmetryStrength: 0.1, balance: 'symmetric', balanceConfidence: 0.92, visualCenterOfGravity: {x: 0.5, y: 0.5}, visualMassDistribution: {topLeft: 0.1, topCenter: 0.2, topRight: 0.1, middleLeft: 0.2, center: 0.9, middleRight: 0.2, bottomLeft: 0.1, bottomCenter: 0.2, bottomRight: 0.1}, directionalFlow: ['inward'], edgeTension: {top: 0.1, right: 0.1, bottom: 0.1, left: 0.1}, framing: [], cropping: 'none', overlapStrength: 0, layeringStrength: 0.1, focalRegionIds: ['region-1'], evidenceIds: ['obs-1']}, hierarchyAnalysis: {primaryFocus: {regionId: 'region-1', level: 'primary', factors: [{factor: 'scale', contribution: 0.9, confidence: 0.9, evidenceIds: ['obs-1']}], score: 0.9, confidence: 0.9, explanation: 'Scale dominates.'}, secondaryFocus: [], tertiaryFocus: [], readingFlow: {entryPoint: 'region-1', attentionSequence: ['region-1'], transitions: [], exitPoint: 'region-1', readingPattern: 'custom', confidence: 0.9, evidenceIds: ['obs-1']}, clarity: 0.95, evidenceIds: ['obs-1']}, spacingAnalysis: {negativeSpace: {negativeSpaceRatio: 0.64, distribution: 'peripheral', activeRatio: 0.5, passiveRatio: 0.14, purposePotential: 0.8, balanceContribution: 0.9, textPlacementPotential: 0.7, breathingRoom: 0.9, edgePressure: {top: 0.1, right: 0.1, bottom: 0.1, left: 0.1}, confidence: 0.9, evidenceIds: ['obs-1']}, alignmentRhythm: 0.9, spacingConsistency: 0.9, density: 0.36, evidenceIds: ['obs-1']}};
+const healthyConsistency = {uncertainties: [], contradictions: [], evidenceQuality: {coverage: 0.95, consistency: 0.95, measurementSupport: 0.85, observationToInferenceRatio: 0.9, speculationRisk: 0.05, overall: 0.94}, overallConfidence: 0.92};
+const weakConsistency = {uncertainties: [{id: 'u1', domain: 'composition', description: 'Weak evidence.', reason: 'insufficient_evidence', confidence: 0.4, impact: 'high'}], contradictions: [{id: 'c1', statements: ['Centered', 'Not centered'], evidenceIds: ['obs-1'], severity: 0.7, resolutionStatus: 'unresolved'}], evidenceQuality: {coverage: 0.5, consistency: 0.5, measurementSupport: 0.3, observationToInferenceRatio: 0.4, speculationRisk: 0.5, overall: 0.48}, overallConfidence: 0.55};
+const critic = {criticScore: 78, dimensions: {evidenceIntegrity: 70, compositionReasoning: 80, hierarchyReasoning: 80, typographicReasoning: 75, colorReasoning: 75, physicalPlausibility: 75, semanticSeparation: 100, antiAiDetection: 70, confidenceCalibration: 70}, issues: ['Evidence is weak.'], corrections: ['Collect more observations.'], requiresRevision: true, confidence: 0.85};
+const factory = (weak = false, invalid: 'none' | 'repairable' | 'persistent' | 'fake-region' | 'fake-evidence' = 'none') => (request: AIStructuredRequest) => {
+  if (request.pass === 'sol_critic') return critic;
+  if (request.pass === 'repair') return {patchJson: JSON.stringify(invalid === 'persistent' ? {relationships: [{id: 'bad', sourceRegionId: 'fake', targetRegionId: 'region-1', relationship: 'alignment', strength: 1, evidenceIds: ['obs-1'], evidence: [], confidence: 1}]} : rawPatch)};
+  if (request.pass === 'raw_observation') return {patchJson: JSON.stringify(invalid === 'repairable' || invalid === 'persistent' ? {} : rawPatch)};
+  if (request.pass === 'spatial_relationships') return {patchJson: JSON.stringify(invalid === 'fake-region' || invalid === 'fake-evidence' ? {relationships: [{id: 'bad', sourceRegionId: invalid === 'fake-region' ? 'fake' : 'region-1', targetRegionId: 'region-1', relationship: 'alignment', strength: 1, evidenceIds: [invalid === 'fake-evidence' ? 'fake-evidence' : 'obs-1'], evidence: [], confidence: 1}]} : {relationships: []})};
+  if (request.pass === 'domain_analysis') return {patchJson: JSON.stringify(domainPatch)};
+  if (request.pass === 'principle_inference') return {patchJson: JSON.stringify({inferredPrinciples: [], antiAiFindings: []})};
+  return {patchJson: JSON.stringify(weak ? weakConsistency : healthyConsistency)};
+};
+
+const runPipeline = (projectId: string, provider: MockAIProvider, overrides: Partial<OpenAIConfig> = {}, analysisDepth: 'standard' | 'deep' = 'standard') => analyzeReferenceImage({projectId, image: {kind: 'base64', data: 'AA==', mediaType: 'image/png'}, analysisDepth, semanticExclusions: exclusions}, {provider, budgetStore: new InMemoryBudgetStore(), config: {...config, ...overrides}});
+
+export const runAIArchitectureValidations = async (): Promise<void> => {
+  assert(Math.abs(calculateActualCost('gpt-5.6-terra', {inputTokens: 1000, cachedInputTokens: 0, outputTokens: 1000}) - 0.014) < 1e-12, 'Terra cost');
+  assert(Math.abs(calculateActualCost('gpt-5.6-sol', {inputTokens: 1000, cachedInputTokens: 0, outputTokens: 1000}) - 0.024) < 1e-12, 'Sol cost');
+  assert(Math.abs(calculateActualCost('gpt-5.6-terra', {inputTokens: 1000, cachedInputTokens: 400, outputTokens: 0}) - 0.00128) < 1e-12, 'cached tokens must not be double charged');
+  assert(createProjectBudget(0.75, 0.5, 0.46).status === 'approaching_limit', '$0.50 target status');
+  assert(createProjectBudget(0.75, 0.5, 0.75).status === 'blocked', '$0.75 hard cap');
+  assert(formatCostUsd(0.183449) === '$0.1834', 'round only for presentation');
+  let unknown = false; try {calculateActualCost('unknown', {inputTokens: 1, cachedInputTokens: 0, outputTokens: 1});} catch (error) {unknown = error instanceof UnknownModelPricingError;} assert(unknown, 'unknown model pricing');
+  const healthy = await runPipeline('healthy', new MockAIProvider(factory()));
+  assert(healthy.aiUsage.escalationStatus === 'not_needed' && healthy.aiUsage.calls.length === 5, 'healthy standard Terra pipeline must not use Sol');
+  const deep = await runPipeline('deep', new MockAIProvider(factory()), {}, 'deep'); assert(deep.forensics.metadata.analysisDepth === 'deep' && deep.aiUsage.calls.length === 5, 'deep Terra pipeline');
+  const weak = await runPipeline('weak', new MockAIProvider(factory(true)));
+  assert(weak.aiUsage.escalationStatus === 'executed' && weak.aiUsage.modelsUsed.includes('gpt-5.6-sol'), 'weak quality triggers Sol');
+  const blocked = await runPipeline('blocked', new MockAIProvider(factory(true)), {maxProjectCostUsd: 0.12});
+  assert(blocked.aiUsage.escalationStatus === 'budget_blocked', 'Sol blocked by budget');
+  const repaired = await runPipeline('repair', new MockAIProvider(factory(false, 'repairable')));
+  assert(repaired.aiUsage.calls.some(({repairAttempt}) => repairAttempt), 'invalid pass repair succeeds once');
+  assert(Math.abs(repaired.aiUsage.totalCostUsd - repaired.aiUsage.calls.reduce((sum, call) => sum + call.costUsd, 0)) < 1e-12, 'multi-pass and repair costs sum precisely');
+  let persistent = false; try {await runPipeline('persistent', new MockAIProvider(factory(false, 'persistent')));} catch (error) {persistent = error instanceof AISchemaError;} assert(persistent, 'persistent invalid pass fails');
+  let fakeRegion = false; try {await runPipeline('fake-region', new MockAIProvider(factory(false, 'fake-region')));} catch (error) {fakeRegion = error instanceof AISchemaError;} assert(fakeRegion, 'fake region ID rejected');
+  let fakeEvidence = false; try {await runPipeline('fake-evidence', new MockAIProvider(factory(false, 'fake-evidence')));} catch (error) {fakeEvidence = error instanceof AISchemaError;} assert(fakeEvidence, 'fake evidence ID rejected');
+  assert(validateMockSemantic(healthy), 'semantic firewall and DesignDNA mapping');
+  const leakedDna = structuredClone(healthy.designDNA); leakedDna.evidence.observedFacts.push({observation: '50% OFF', confidence: 1, inferenceLevel: 'observed'});
+  assert(detectSemanticLeakage(healthy.forensics, leakedDna).includes('sem-1'), 'semantic leakage detected');
+  let injectionPolicySeen = false; await runPipeline('injection', new MockAIProvider((request) => {injectionPolicySeen ||= request.instructions.includes('untrusted visual content'); return factory()(request);})); assert(injectionPolicySeen, 'prompt-injection policy is present in provider instructions');
+  assert(new AITimeoutError('x').name === 'AITimeoutError' && new AIRateLimitError('x').name === 'AIRateLimitError', 'typed timeout and rate-limit errors');
+  assert(new AIAuthenticationError('x').name === 'AIAuthenticationError' && new AIBudgetExceededError('x').name === 'AIBudgetExceededError', 'typed auth and budget errors');
+  let missingKey = false; try {new OpenAIProvider(config);} catch (error) {missingKey = error instanceof AIAuthenticationError;} assert(missingKey, 'missing API key fails safely');
+  const monthlyStore = new InMemoryBudgetStore(); for (let i = 0; i < 20; i += 1) await monthlyStore.saveProject({...createMockLedger(`m${i}`), totalCostUsd: 0.75}); const month = await monthlyStore.getMonth('2026-09', 15); assert(month.spentUsd === 15 && month.remainingUsd === 0 && month.projectCount === 20, 'monthly $15 budget');
+};
+const validateMockSemantic = (result: Awaited<ReturnType<typeof runPipeline>>) => result.designDNA.evidence.observedFacts.every(({observation}) => observation !== '50% OFF') && result.forensics.semanticContent.excludedObservationIds.includes('sem-1');
+const createMockLedger = (projectId: string) => ({projectId, startedAt: '2026-09-01T00:00:00.000Z', modelCalls: [], inputTokens: 0, cachedInputTokens: 0, outputTokens: 0, totalCostUsd: 0});
+
+await runAIArchitectureValidations();
