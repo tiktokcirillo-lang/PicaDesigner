@@ -5,6 +5,7 @@ import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLim
 import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config.js';
 import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses.js';
 import type {VisualInput} from '../../domain/visual-forensics/index.js';
+import type {GenerateDesignSpecRequest} from '../../application/design-spec/index.js';
 
 const budgetStore = new InMemoryBudgetStore();
 const sendError = (response: Response, error: unknown) => {
@@ -34,9 +35,18 @@ export const createLegacyAIRouter = (): Router => {
   });
   router.post('/generate-design-spec', async (request, response) => {
     try {
-      const {prompt, image, projectId = `design-${Date.now()}`} = request.body as {prompt?: string; image?: VisualInput; projectId?: string};
-      if (!prompt?.trim() || prompt.length > 50_000) return response.status(400).json({error: 'prompt is required and must be at most 50,000 characters'});
-      return response.json(await generateDesignSpec({prompt: prompt.trim(), image, projectId}, dependencies()));
+      const body = request.body as Partial<GenerateDesignSpecRequest> & {prompt?: string; image?: VisualInput};
+      const projectId = body.projectId?.trim() || `design-${Date.now()}`;
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(projectId)) return response.status(400).json({error: 'projectId is invalid'});
+      if (body.prompt) {
+        if (body.prompt.length > 50_000) return response.status(400).json({error: 'legacy prompt must be at most 50,000 characters'});
+        return response.json(await generateDesignSpec({projectId, copy: '', format: 'legacy', destinationTool: 'legacy', tone: 'legacy', legacyPrompt: body.prompt}, dependencies()));
+      }
+      if (typeof body.copy !== 'string' || body.copy.length > 10_000) return response.status(400).json({error: 'copy must be a string with at most 10,000 characters'});
+      if (!body.format?.trim() || body.format.length > 120) return response.status(400).json({error: 'format is required'});
+      if (!body.destinationTool?.trim() || body.destinationTool.length > 120) return response.status(400).json({error: 'destinationTool is required'});
+      if (!body.tone?.trim() || body.tone.length > 200) return response.status(400).json({error: 'tone is required'});
+      return response.json(await generateDesignSpec({projectId, copy: body.copy, format: body.format, destinationTool: body.destinationTool, tone: body.tone, brandInput: body.brandInput, referenceIntelligence: body.referenceIntelligence}, dependencies()));
     } catch (error) {return sendError(response, error);}
   });
   return router;

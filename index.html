@@ -1354,6 +1354,8 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 </div>
 
 <script type="module">
+  import {analyzeVisualReference, invalidateReferenceIntelligence} from '/src/client/reference-intelligence.ts';
+
   const DB_NAME = 'AriaDB';
   const DB_VERSION = 1;
   const STORE_NAME = 'keyval';
@@ -1421,6 +1423,9 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.currentOutput = '';
   window.loadingInterval = null;
   window.uploadedImage = null;
+  window.referenceSession = null;
+  window.activeProjectId = crypto.randomUUID();
+  window.referenceAnalysisDepth = 'standard';
 
   window.parseApiResponse = async function(response) {
     const contentType = response.headers.get('content-type') || '';
@@ -1533,8 +1538,23 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       window.uploadedImage = {
         data: e.target.result.split(',')[1], // Base64 data
         mimeType: file.type,
-        name: file.name
+        name: file.name,
+        size: file.size,
+        lastModified: file.lastModified
       };
+      window.referenceSession = null;
+      invalidateReferenceIntelligence();
+
+      if (['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+        try {
+          const bitmap = await createImageBitmap(file);
+          window.uploadedImage.width = bitmap.width;
+          window.uploadedImage.height = bitmap.height;
+          bitmap.close();
+        } catch (err) {
+          console.warn('Não foi possível ler as dimensões locais da referência.', err);
+        }
+      }
       
       document.getElementById('imagePreview').style.display = 'block';
       
@@ -1593,6 +1613,8 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 
   window.removeImage = function() {
     window.uploadedImage = null;
+    window.referenceSession = null;
+    invalidateReferenceIntelligence();
     document.getElementById('imageUpload').value = '';
     document.getElementById('imagePreview').style.display = 'none';
     document.getElementById('previewImg').src = '';
@@ -1981,20 +2003,35 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.showState('loading');
     window.animateLoadingSteps();
 
-    const prompt = window.buildPrompt(text, tool, hasBrand, color1, color2, font, fontBody, lineHeight, letterSpacing, wordSpacing, tone, !!window.uploadedImage, format, brandLinks);
-
     try {
       const supportedImage = window.uploadedImage && ['image/jpeg', 'image/png', 'image/webp'].includes(window.uploadedImage.mimeType)
         ? {kind: 'base64', mediaType: window.uploadedImage.mimeType, data: window.uploadedImage.data}
         : undefined;
+      if (supportedImage) {
+        try {
+          window.referenceSession = await analyzeVisualReference({image: window.uploadedImage, projectId: window.activeProjectId, analysisDepth: window.referenceAnalysisDepth, existingSession: window.referenceSession});
+        } catch (error) {
+          throw new Error('Não foi possível analisar a referência visual. ' + (error instanceof Error ? error.message : 'Tente novamente.'));
+        }
+        if (window.referenceSession.status !== 'ready') throw new Error('Não foi possível analisar a referência visual com qualidade suficiente. Envie uma referência mais clara.');
+        window.showForensicsDiagnostics(window.referenceSession);
+      }
       const response = await fetch('/api/ai/generate-design-spec', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({prompt, image: supportedImage, projectId: `design-${Date.now()}`})
+        body: JSON.stringify({
+          projectId: window.activeProjectId,
+          copy: text,
+          format,
+          destinationTool: tool,
+          tone,
+          brandInput: hasBrand ? {colors: [color1, color2].filter(Boolean), headlineFont: font, bodyFont: fontBody, lineHeight, letterSpacing, wordSpacing, url: brandLinks} : undefined,
+          referenceIntelligence: window.referenceSession
+        })
       });
       const payload = await window.parseApiResponse(response);
       if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
-      const raw = payload.text || '';
+      const raw = payload.content || '';
       window.currentOutput = raw;
 
       clearInterval(window.loadingInterval);
@@ -2021,7 +2058,10 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           logoBase64: document.getElementById('logoBase64').value,
           tone: tone,
           raw: raw,
-          uploadedImage: window.uploadedImage
+          uploadedImage: window.uploadedImage,
+          projectId: window.activeProjectId,
+          referenceSession: window.referenceSession,
+          aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, designSpecCost: payload.aiUsage?.totalCostUsd || 0, projectTotalAiCost: (window.referenceSession?.aiUsage?.totalCostUsd || 0) + (payload.aiUsage?.totalCostUsd || 0)}
         }
       };
       window.projects.push(proj);
@@ -2100,6 +2140,18 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     }
   }
 
+  window.showForensicsDiagnostics = function(session) {
+    if (!new URLSearchParams(window.location.search).has('debug') || new URLSearchParams(window.location.search).get('debug') !== 'forensics') return;
+    let panel = document.getElementById('forensicsDebug');
+    if (!panel) {
+      panel = document.createElement('pre');
+      panel.id = 'forensicsDebug';
+      panel.style.cssText = 'position:fixed;right:12px;bottom:12px;z-index:9999;max-width:380px;max-height:45vh;overflow:auto;padding:12px;background:#111;color:#ddd;border:1px solid #555;font:11px monospace;white-space:pre-wrap;';
+      document.body.appendChild(panel);
+    }
+    panel.textContent = JSON.stringify({sessionId: session.sessionId, qualityScore: session.quality?.score, overallConfidence: session.forensics?.overallConfidence, evidenceQuality: session.forensics?.evidenceQuality?.overall, speculationRisk: session.forensics?.evidenceQuality?.speculationRisk, designDNA: {confidence: session.designDNA?.confidence, availableDomains: Object.keys(session.designDNA || {}).filter(key => !['evidence', 'semanticExclusions'].includes(key))}, aiCost: session.aiUsage?.totalCostUsd}, null, 2);
+  };
+
   window.parseOutput = function(raw, defs) {
     const result = [];
     const lines = raw.split('\n');
@@ -2154,7 +2206,9 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           color2: document.getElementById('hex2').value,
           font: document.getElementById('brandFont').value,
           tone: document.getElementById('toneSelect').value,
-          raw: window.currentOutput
+          raw: window.currentOutput,
+          projectId: window.activeProjectId,
+          referenceSession: window.referenceSession
         }
       };
       window.savedVersions.push(version);
@@ -2177,6 +2231,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     document.getElementById('color2').value = version.state.color2;
     document.getElementById('brandFont').value = version.state.font;
     document.getElementById('toneSelect').value = version.state.tone;
+    window.activeProjectId = version.state.projectId || window.activeProjectId;
+    window.referenceSession = version.state.referenceSession || window.referenceSession;
 
     // Restore output
     window.currentOutput = version.state.raw;
@@ -2303,6 +2359,10 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         document.getElementById('previewImg').style.display = 'block';
       }
     }
+
+    window.activeProjectId = state.projectId || String(id);
+    window.referenceSession = state.referenceSession || null;
+    if (window.referenceSession) window.showForensicsDiagnostics(window.referenceSession);
 
     // Restore output
     window.currentOutput = state.raw;

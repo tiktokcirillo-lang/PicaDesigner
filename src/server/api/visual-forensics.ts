@@ -5,17 +5,22 @@ import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLim
 import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config.js';
 import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses.js';
 import type {VisualForensicsInput} from '../../domain/visual-forensics/index.js';
+import {createReferenceIntelligence, type ReferenceSourceMetadata} from '../../application/reference-intelligence/index.js';
 
 const budgetStore = new InMemoryBudgetStore();
 export const createVisualForensicsRouter = (): Router => {
   const router = Router();
   router.post('/analyze', async (request, response) => {
     try {
-      const body = request.body as Partial<VisualForensicsInput> & {projectId?: string};
+      const body = request.body as Partial<VisualForensicsInput> & {projectId?: string; imageMetadata?: Omit<ReferenceSourceMetadata, 'mediaType'>};
       if (!body.image || !body.projectId) return response.status(400).json({error: 'image and projectId are required'});
+      if (!/^[A-Za-z0-9_-]{1,128}$/.test(body.projectId)) return response.status(400).json({error: 'projectId is invalid'});
       const config = loadOpenAIConfig();
-      const result = await analyzeReferenceImage({image: body.image, projectId: body.projectId, analysisDepth: body.analysisDepth, semanticExclusions: body.semanticExclusions, context: body.context, language: body.language}, {provider: new OpenAIProvider(config), budgetStore, config});
-      return response.json(result);
+      const provider = new OpenAIProvider(config);
+      const session = await createReferenceIntelligence({image: body.image, projectId: body.projectId, imageMetadata: body.imageMetadata, analysisDepth: body.analysisDepth, semanticExclusions: body.semanticExclusions, context: body.context}, {
+        analyze: (input) => analyzeReferenceImage({...input, language: body.language}, {provider, budgetStore, config}),
+      });
+      return response.json(session);
     } catch (error) {
       const status = error instanceof UnsupportedAIInputError ? 400
         : error instanceof AIAuthenticationError ? 401

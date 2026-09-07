@@ -1,0 +1,28 @@
+import {buildReferenceDesignContext} from '../reference-intelligence/design-context.js';
+import type {DesignDecision, GenerateDesignSpecRequest} from './types.js';
+
+export interface BuiltDesignSpecPrompt {instructions: string; input: string; decisions: DesignDecision[]}
+
+const BASE_ART_DIRECTOR_POLICY = `You are not inventing an arbitrary visual style. Translate reference structural intelligence, project communication objective, brand constraints, and format constraints into an executable design system. Every major decision must trace to reference DNA, brand, communication, format, or explicitly identified creative interpretation.`;
+const REFERENCE_POLICY = `Reference intelligence describes structural visual logic. Preserve hierarchy, proportions, rhythm, balance, spacing logic, color relationships, lighting behavior, material behavior, visual tension, and typography behavior. Do not copy literal people, products, logos, written text, exact brands, locations, or narrative objects unless explicitly requested. High-confidence reference DNA outranks a generic tone preset structurally. Soft influences are optional; context-only signals must never be forced.`;
+const OUTPUT_CONTRACT = `Return a professional Portuguese specification with these sections: VALIDAÇÃO DE FORMATO E DIMENSÕES; CONCEITO VISUAL; TIPOGRAFIA; PALETA DE CORES; IMAGENS E DIREÇÃO DE ARTE; ICONOGRAFIA; LAYOUT; DETALHES DE LUXO. Keep recommendations executable and concise.`;
+
+export class DesignSpecPromptBuilder {
+  build(request: GenerateDesignSpecRequest): BuiltDesignSpecPrompt {
+    const referenceContext = request.referenceIntelligence ? buildReferenceDesignContext(request.referenceIntelligence) : undefined;
+    const modules = {
+      projectContext: {copy: request.copy, tone: request.tone, destinationTool: request.destinationTool},
+      formatRules: {format: request.format, instruction: 'Respect exact dimensions, aspect ratio, safe areas, and destination-tool constraints.'},
+      brandContext: request.brandInput,
+      referenceDesignDNA: referenceContext,
+      copyHierarchy: {instruction: 'Derive title, subtitle, body, data, and CTA hierarchy only when present in the supplied copy.'},
+    };
+    const decisions: DesignDecision[] = [
+      {decision: `Respect output format ${request.format}.`, domain: 'format', source: 'format'},
+      {decision: `Communicate using the ${request.tone} tone.`, domain: 'communication', source: 'communication'},
+      ...(referenceContext ? [{decision: 'Use reference structural DNA according to confidence authority.', domain: 'art_direction', source: 'reference_dna' as const, confidence: referenceContext.confidence}] : []),
+      ...(request.brandInput ? [{decision: 'Respect supplied brand constraints.', domain: 'brand', source: 'brand' as const}] : []),
+    ];
+    return {instructions: [BASE_ART_DIRECTOR_POLICY, REFERENCE_POLICY, OUTPUT_CONTRACT].join('\n\n'), input: JSON.stringify(modules), decisions};
+  }
+}

@@ -80,8 +80,8 @@ export const runAIArchitectureValidations = async (): Promise<void> => {
   const textProvider = new MockAIProvider((request) => ({text: request.pass === 'refine_copy' ? 'Texto refinado.' : 'Especificação visual.'}));
   const refined = await refineCopy({projectId: 'copy-service', text: 'texto original', tone: 'premium'}, {provider: textProvider, budgetStore: legacyStore, config});
   assert(refined.text === 'Texto refinado.' && refined.aiUsage.calls[0]?.pass === 'refine_copy' && refined.aiUsage.totalCostUsd > 0, 'refine-copy uses provider and shared cost tracking');
-  const design = await generateDesignSpec({projectId: 'design-service', prompt: 'Crie uma especificação.'}, {provider: textProvider, budgetStore: legacyStore, config});
-  assert(design.text === 'Especificação visual.' && design.aiUsage.calls[0]?.pass === 'generate_design_spec', 'design specification uses provider and shared cost tracking');
+  const design = await generateDesignSpec({projectId: 'design-service', copy: 'Copy', format: '16:9', destinationTool: 'PowerPoint', tone: 'premium'}, {provider: textProvider, budgetStore: legacyStore, config});
+  assert(design.content === 'Especificação visual.' && design.aiUsage.calls[0]?.pass === 'generate_design_spec', 'design specification uses provider and shared cost tracking');
   const unavailableImages = new UnavailableImageGenerationProvider(); let imageUnavailable = false;
   try {await unavailableImages.generate({projectId: 'logo', prompt: 'logo'});} catch {imageUnavailable = true;}
   assert(!unavailableImages.available && imageUnavailable, 'image generation remains explicitly unavailable');
