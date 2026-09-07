@@ -1,0 +1,12 @@
+import {strict as assert} from 'node:assert';
+import {META_ADS_FAMILY,resolveFormatDefinition} from './formats.js';
+const square=resolveFormatDefinition('meta_ads_square');assert.equal(square.width,1080,'META-A');assert.equal(square.aspectLabel,'1:1');
+const portrait=resolveFormatDefinition('meta_ads_feed_portrait');assert.equal(portrait.height,1350,'META-B');assert.equal(portrait.aspectLabel,'4:5');
+const story=resolveFormatDefinition('meta_ads_story_reels');assert.equal(story.height,1920,'META-C');assert.equal(story.aspectLabel,'9:16');assert(story.platformInsets?.length);
+const landscape=resolveFormatDefinition('meta_ads_landscape');assert.equal(landscape.width,1200,'META-D');assert(Math.abs(landscape.aspectRatio-1.91)<.01);
+assert.equal(resolveFormatDefinition('Meta 9:16').id,'meta_ads_story_reels','META-E');
+assert.equal(resolveFormatDefinition('1200x628',{platform:'meta'}).id,'meta_ads_landscape','META-F');
+assert.equal(resolveFormatDefinition('1080x1080').id,'generic_square_1080','META-G');
+assert.deepEqual(META_ADS_FAMILY.variants,['meta_ads_square','meta_ads_feed_portrait','meta_ads_story_reels','meta_ads_landscape'],'META-H');
+const custom=resolveFormatDefinition({width:777,height:333});assert.equal(custom.aspectRatio,777/333);assert.equal(custom.category,'custom');
+console.log('Semantic Format Registry validation passed: META-A–H and custom ratio.');

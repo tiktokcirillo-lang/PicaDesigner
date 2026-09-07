@@ -2,7 +2,7 @@ import type {AIUsageResult} from '../../infrastructure/ai/types.js';
 
 export const LAYOUT_PLAN_SCHEMA_VERSION = '1.0.0' as const;
 export type Orientation = 'square'|'portrait'|'landscape';
-export type FormatCategory = 'social_square'|'social_portrait'|'social_story'|'presentation'|'carousel'|'banner'|'custom';
+export type FormatCategory = 'social_square'|'social_portrait'|'social_story'|'social_landscape'|'presentation'|'carousel'|'banner'|'custom';
 export interface Insets {top:number;right:number;bottom:number;left:number}
 export interface NormalizedPoint {x:number;y:number}
 export interface NormalizedRect extends NormalizedPoint {width:number;height:number}
@@ -10,7 +10,11 @@ export interface PixelRect extends NormalizedPoint {width:number;height:number}
 export interface PlatformInsetPolicy {id:string;insets:Insets;configurable:true}
 export interface SafeAreaPolicy {minimum:Insets;maximum:Insets;platformInsets?:PlatformInsetPolicy[]}
 export interface GridRecommendation {kind:'column'|'modular'|'manuscript'|'hybrid';columnRange:[number,number];rowRange?:[number,number]}
-export interface FormatDefinition {id:string;width:number;height:number;aspectRatio:number;orientation:Orientation;category:FormatCategory;baseSafeArea:Insets;platformInsets?:PlatformInsetPolicy[];recommendedGrid:GridRecommendation}
+export interface FormatContext {platform?:string;placement?:string;usage?:string}
+export interface FormatMetadata {recommended?:boolean;advertising?:boolean;organic?:boolean;presentation?:boolean}
+export interface FormatDefinition {id:string;label:string;platform?:string;placement?:string;usage?:string;width:number;height:number;aspectRatio:number;aspectLabel:string;orientation:Orientation;category:FormatCategory;baseSafeArea:Insets;platformInsets?:PlatformInsetPolicy[];recommendedGrid:GridRecommendation;aliases:string[];commonPlacements?:string[];metadata?:FormatMetadata}
+export interface CustomFormatDefinition extends FormatDefinition {category:'custom';derivedAspectRatio:number}
+export interface FormatFamily {id:string;label:string;platform?:string;variants:string[]}
 export interface CanvasSpec {width:number;height:number;aspectRatio:number;orientation:Orientation;safeArea:Insets;contentArea:NormalizedRect}
 export interface SpacingScale {baseUnit:number;normalizedBaseUnit:number;tokens:Record<'xxs'|'xs'|'sm'|'md'|'lg'|'xl'|'2xl'|'3xl',number>}
 export interface BaselineGrid {unit:number;origin:number;snapTolerance:number}

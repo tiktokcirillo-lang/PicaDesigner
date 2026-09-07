@@ -6,7 +6,7 @@ The Layout Engine converts an approved Creative Direction route into determinist
 
 `CreativeDirectionSession.ready → format → canvas/safe area → intent → archetype ranking → grid/tokens → three candidates → constraints and text fit → local quality scoring → hard gates → deterministic selection → LayoutPlan`
 
-The format registry owns 1080×1080, 1080×1350, 1080×1920 and 1920×1080 definitions and temporary aliases. Unknown strings fail explicitly; bounded custom dimensions are accepted. Normalized rectangles are the logical authority and integer pixel rectangles are deterministic resolved output.
+The semantic format registry owns generic 1080×1080, 1080×1350, 1080×1920 and presentation 1920×1080 definitions, plus Meta Ads 1:1, 4:5, 9:16 and 1.91:1 presets. Definitions carry label, platform, usage, placements, aliases, safe-area behavior and metadata—not dimensions alone. The same dimension resolves to a generic preset unless `FormatContext.platform` explicitly requests Meta. Unknown strings fail explicitly; bounded custom dimensions are accepted and their aspect ratio is always derived from width/height. Normalized rectangles are the logical authority and integer pixel rectangles are deterministic resolved output.
 
 Safe area is composed from format policy, configurable platform chrome and bounded art-direction needs. Grid columns, baseline, gutter and spacing module respond to format, route density and Brand DNA rather than a universal margin or column count. Text blocks reference approved `MessageHierarchyItem.id`; logos reference original asset IDs.
 
