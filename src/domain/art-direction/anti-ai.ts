@@ -1,4 +1,4 @@
-import type {AntiAISignalId, DesignPrinciple} from './types';
+import type {AntiAISignalId, DesignPrinciple} from './types.js';
 
 export interface AntiAISignalKnowledge {
   id: AntiAISignalId;

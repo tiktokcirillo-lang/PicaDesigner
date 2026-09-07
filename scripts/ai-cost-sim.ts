@@ -1,4 +1,4 @@
-import {calculateActualCost} from '../src/infrastructure/ai/budget/cost-calculator';
+import {calculateActualCost} from '../src/infrastructure/ai/budget/cost-calculator.js';
 import {existsSync, readFileSync} from 'node:fs';
 import {resolve} from 'node:path';
 

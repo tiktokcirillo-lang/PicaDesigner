@@ -1,8 +1,8 @@
-import {calculateActualCost, estimateCallCost, type EstimatedCallUsage} from './cost-calculator';
-import {assertCallWithinBudget} from './budget-policy';
-import {appendModelCall, type BudgetStore} from './budget-tracker';
-import type {AIProvider, AIStructuredRequest, AIStructuredResponse, ProjectCostLedger} from '../types';
-import {AIBudgetExceededError} from '../providers/errors';
+import {calculateActualCost, estimateCallCost, type EstimatedCallUsage} from './cost-calculator.js';
+import {assertCallWithinBudget} from './budget-policy.js';
+import {appendModelCall, type BudgetStore} from './budget-tracker.js';
+import type {AIProvider, AIStructuredRequest, AIStructuredResponse, ProjectCostLedger} from '../types.js';
+import {AIBudgetExceededError} from '../providers/errors.js';
 
 export class BudgetedAIExecutor {
   constructor(private readonly provider: AIProvider, private readonly store: BudgetStore, private readonly hardLimitUsd: number, private ledger: ProjectCostLedger, private monthlyRemainingUsd = Number.POSITIVE_INFINITY) {}

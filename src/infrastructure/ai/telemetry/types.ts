@@ -1,1 +1,1 @@
-export type {AIAnalysisTelemetry} from '../types';
+export type {AIAnalysisTelemetry} from '../types.js';

@@ -1,5 +1,5 @@
-import type {AntiAISignalId} from '../art-direction';
-import type {ForensicAntiAISignal} from './types';
+import type {AntiAISignalId} from '../art-direction/index.js';
+import type {ForensicAntiAISignal} from './types.js';
 
 export const FORENSIC_ANTI_AI_KNOWLEDGE_MAP: Readonly<Record<ForensicAntiAISignal, AntiAISignalId>> = {
   inconsistentLighting: 'inconsistent_light_sources',

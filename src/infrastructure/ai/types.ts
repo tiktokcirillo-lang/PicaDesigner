@@ -1,4 +1,4 @@
-import type {AnalysisDepth, AnalyticalPassId, VisualInput} from '../../domain/visual-forensics';
+import type {AnalysisDepth, AnalyticalPassId, VisualInput} from '../../domain/visual-forensics/index.js';
 
 export type AIProviderId = 'openai' | 'mock';
 export type AIModelRole = 'forensics' | 'critic';

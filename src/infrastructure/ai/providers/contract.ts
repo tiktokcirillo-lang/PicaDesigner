@@ -1,1 +1,1 @@
-export type {AIProvider, AIStructuredRequest, AIStructuredResponse} from '../types';
+export type {AIProvider, AIStructuredRequest, AIStructuredResponse} from '../types.js';

@@ -1,2 +1,2 @@
-import type {ForensicsPromptModule} from './types';
+import type {ForensicsPromptModule} from './types.js';
 export const COMPOSITION_PROMPT: ForensicsPromptModule = {id: 'composition-forensics', pass: 'domain_analysis', objective: 'Explain composition from observed spatial evidence.', instructions: ['Estimate mass by nine canvas sectors.', 'Distinguish geometric and optical centers.', 'Assess balance, flow, edge tension, crop, overlap, and layering.', 'Cite observation IDs for each conclusion.'], prohibited: ['Style labels as evidence', 'Semantic storytelling', 'Unsupported precision'], expectedOutputs: ['CompositionForensics', 'SpacingForensics']};

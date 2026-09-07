@@ -1,5 +1,5 @@
-import {AIBudgetExceededError} from '../providers/errors';
-import type {AIProjectBudget, BudgetStatus, ProjectCostLedger} from '../types';
+import {AIBudgetExceededError} from '../providers/errors.js';
+import type {AIProjectBudget, BudgetStatus, ProjectCostLedger} from '../types.js';
 
 export const getBudgetStatus = (spentUsd: number, limitUsd: number): BudgetStatus => {
   const ratio = limitUsd > 0 ? spentUsd / limitUsd : 1;

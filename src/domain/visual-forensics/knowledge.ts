@@ -1,4 +1,4 @@
-import type {ObservationDomain} from './types';
+import type {ObservationDomain} from './types.js';
 
 export interface SeniorDesignerQuestion {id: string; domain: ObservationDomain; question: string; examines: string[]}
 

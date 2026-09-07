@@ -1,4 +1,4 @@
-import type {ProfessionalMetric, ProfessionalMetricId, ProfessionalMetrics, VisualEvidence} from './types';
+import type {ProfessionalMetric, ProfessionalMetricId, ProfessionalMetrics, VisualEvidence} from './types.js';
 
 export interface MetricDefinition {
   id: ProfessionalMetricId;

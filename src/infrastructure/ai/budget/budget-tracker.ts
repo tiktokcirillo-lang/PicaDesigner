@@ -1,4 +1,4 @@
-import type {AIMonthlyBudget, AIModelCall, ProjectCostLedger} from '../types';
+import type {AIMonthlyBudget, AIModelCall, ProjectCostLedger} from '../types.js';
 
 export interface BudgetStore {getProject(projectId: string): Promise<ProjectCostLedger | undefined>; saveProject(ledger: ProjectCostLedger): Promise<void>; getMonth(month: string, limitUsd: number): Promise<AIMonthlyBudget>}
 export class InMemoryBudgetStore implements BudgetStore {

@@ -1,4 +1,4 @@
-import type {NormalizedValue} from '../art-direction';
+import type {NormalizedValue} from '../art-direction/index.js';
 
 export interface WeightedConfidence {confidence: NormalizedValue; weight?: number}
 

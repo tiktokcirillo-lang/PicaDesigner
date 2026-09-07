@@ -1,4 +1,4 @@
-import type {DesignDomain, DesignPrinciple, VisualMovementId} from './types';
+import type {DesignDomain, DesignPrinciple, VisualMovementId} from './types.js';
 
 export const ART_DIRECTION_VOCABULARY = {
   composition: ['symmetry', 'asymmetry', 'balance', 'tension', 'center of gravity', 'visual mass', 'directional flow', 'edge tension', 'cropping', 'framing', 'layering', 'overlap', 'focal placement'],

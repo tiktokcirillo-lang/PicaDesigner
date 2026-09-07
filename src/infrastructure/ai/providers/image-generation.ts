@@ -21,4 +21,4 @@ export class UnavailableImageGenerationProvider implements ImageGenerationProvid
     throw new AIProviderError('Image generation is temporarily unavailable.');
   }
 }
-import {AIProviderError} from './errors';
+import {AIProviderError} from './errors.js';

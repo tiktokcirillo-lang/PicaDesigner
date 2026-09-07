@@ -1,4 +1,4 @@
-import type {AnalyticalPassId} from '../../../../domain/visual-forensics';
+import type {AnalyticalPassId} from '../../../../domain/visual-forensics/index.js';
 
 type JSONSchema = Record<string, unknown>;
 const normalized = {type: 'number', minimum: 0, maximum: 1} as const;

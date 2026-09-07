@@ -1,2 +1,2 @@
-import type {ForensicsPromptModule} from './types';
+import type {ForensicsPromptModule} from './types.js';
 export const RELATIONSHIPS_PROMPT: ForensicsPromptModule = {id: 'spatial-relationships', pass: 'spatial_relationships', objective: 'Describe how regions organize and affect one another.', instructions: ['Use only existing region IDs.', 'Analyze alignment, proximity, overlap, containment, repetition, similarity, contrast, continuation, direction, scale, spacing, grouping, and occlusion.', 'Attach measurements where supportable.', 'Cite raw observation IDs.'], prohibited: ['Inventing regions', 'Using semantic identity as structural evidence', 'Relationships without evidence'], expectedOutputs: ['VisualRelationship[]', 'ForensicMeasurement[]']};

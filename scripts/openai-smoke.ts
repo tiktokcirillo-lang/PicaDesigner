@@ -1,11 +1,11 @@
 import 'dotenv/config';
 import {mkdir, readFile, writeFile} from 'node:fs/promises';
 import {extname, resolve} from 'node:path';
-import {analyzeReferenceImage} from '../src/application/visual-intelligence/analyze-reference-image';
-import {InMemoryBudgetStore} from '../src/infrastructure/ai/budget/budget-tracker';
-import {resolveSmokeMaxCost} from '../src/infrastructure/ai/budget/smoke-policy';
-import {loadOpenAIConfig} from '../src/infrastructure/ai/providers/openai/config';
-import {OpenAIProvider} from '../src/infrastructure/ai/providers/openai/responses';
+import {analyzeReferenceImage} from '../src/application/visual-intelligence/analyze-reference-image.js';
+import {InMemoryBudgetStore} from '../src/infrastructure/ai/budget/budget-tracker.js';
+import {resolveSmokeMaxCost} from '../src/infrastructure/ai/budget/smoke-policy.js';
+import {loadOpenAIConfig} from '../src/infrastructure/ai/providers/openai/config.js';
+import {OpenAIProvider} from '../src/infrastructure/ai/providers/openai/responses.js';
 
 const args = process.argv.slice(2);
 const imagePath = args.find((arg, index) => !arg.startsWith('--') && args[index - 1] !== '--max-cost');

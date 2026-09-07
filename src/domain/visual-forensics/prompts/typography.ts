@@ -1,2 +1,2 @@
-import type {ForensicsPromptModule} from './types';
+import type {ForensicsPromptModule} from './types.js';
 export const TYPOGRAPHY_PROMPT: ForensicsPromptModule = {id: 'typography-forensics', pass: 'domain_analysis', objective: 'Analyze typography as visual structure.', instructions: ['Assess each text region independently.', 'Record confidence per feature.', 'Analyze classification, weight, width, case, tracking, leading, alignment, density, scale, and hierarchy role.'], prohibited: ['Exact font names without external proof', 'Interpreting written copy', 'Conflating type personality with observed form'], expectedOutputs: ['TypographyForensics']};

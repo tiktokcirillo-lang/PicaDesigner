@@ -9,7 +9,7 @@ import type {
   SemanticExclusions,
   Temperature,
   VisualEvidence,
-} from '../art-direction';
+} from '../art-direction/index.js';
 
 export const VISUAL_FORENSICS_SCHEMA_VERSION = '1.0.0' as const;
 export type VisualForensicsSchemaVersion = typeof VISUAL_FORENSICS_SCHEMA_VERSION;

@@ -1,6 +1,6 @@
-import type {AnalyticalPassId} from '../../../domain/visual-forensics';
-import type {OpenAIConfig} from '../providers/openai/config';
-import type {ReasoningEffort} from '../types';
+import type {AnalyticalPassId} from '../../../domain/visual-forensics/index.js';
+import type {OpenAIConfig} from '../providers/openai/config.js';
+import type {ReasoningEffort} from '../types.js';
 
 export const REASONING_POLICY: Readonly<Record<AnalyticalPassId | 'sol_critic' | 'repair', ReasoningEffort>> = {
   raw_observation: 'low', spatial_relationships: 'medium', domain_analysis: 'medium', principle_inference: 'medium', consistency_check: 'medium', design_dna_mapping: 'none', sol_critic: 'high', repair: 'medium',

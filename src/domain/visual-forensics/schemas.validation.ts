@@ -1,8 +1,8 @@
-import {createSemanticExclusions, validateDesignDNA, type VisualEvidence} from '../art-direction';
-import {propagateConfidence} from './confidence';
-import {mapForensicsToDesignDNA} from './mapper';
-import {createMinimalVisualForensicsReport, validateVisualForensicsReport} from './schemas';
-import type {ConfidentFeature, VisualForensicsReport} from './types';
+import {createSemanticExclusions, validateDesignDNA, type VisualEvidence} from '../art-direction/index.js';
+import {propagateConfidence} from './confidence.js';
+import {mapForensicsToDesignDNA} from './mapper.js';
+import {createMinimalVisualForensicsReport, validateVisualForensicsReport} from './schemas.js';
+import type {ConfidentFeature, VisualForensicsReport} from './types.js';
 
 const assert = (condition: boolean, message: string): void => {
   if (!condition) throw new Error(`Visual Forensics validation failed: ${message}`);

@@ -1,10 +1,10 @@
 import {Router} from 'express';
-import {analyzeReferenceImage} from '../../application/visual-intelligence/analyze-reference-image';
-import {InMemoryBudgetStore} from '../../infrastructure/ai/budget/budget-tracker';
-import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLimitError, AISchemaError, AITimeoutError, AnalysisPipelineError, UnsupportedAIInputError, safeErrorMessage} from '../../infrastructure/ai/providers/errors';
-import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config';
-import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses';
-import type {VisualForensicsInput} from '../../domain/visual-forensics';
+import {analyzeReferenceImage} from '../../application/visual-intelligence/analyze-reference-image.js';
+import {InMemoryBudgetStore} from '../../infrastructure/ai/budget/budget-tracker.js';
+import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLimitError, AISchemaError, AITimeoutError, AnalysisPipelineError, UnsupportedAIInputError, safeErrorMessage} from '../../infrastructure/ai/providers/errors.js';
+import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config.js';
+import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses.js';
+import type {VisualForensicsInput} from '../../domain/visual-forensics/index.js';
 
 const budgetStore = new InMemoryBudgetStore();
 export const createVisualForensicsRouter = (): Router => {

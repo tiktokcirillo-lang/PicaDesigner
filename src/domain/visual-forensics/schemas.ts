@@ -8,14 +8,14 @@ import {
   type SemanticExclusions,
   type ValidationIssue,
   type ValidationResult,
-} from '../art-direction';
+} from '../art-direction/index.js';
 import {
   VISUAL_FORENSICS_SCHEMA_VERSION,
   type CanvasAnalysis,
   type EvidenceQuality,
   type ForensicsMetadata,
   type VisualForensicsReport,
-} from './types';
+} from './types.js';
 
 const NORMALIZED_KEYS = new Set([
   'confidence', 'overallConfidence', 'areaRatio', 'visualWeight', 'salience', 'contrastAgainstEnvironment',

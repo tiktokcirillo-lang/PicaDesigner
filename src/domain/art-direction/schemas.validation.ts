@@ -5,8 +5,8 @@ import {
   validateAntiAIAssessment,
   validateDesignDNA,
   validateSemanticExclusions,
-} from './schemas';
-import {DESIGN_DNA_SCHEMA_VERSION, type DesignDNA} from './types';
+} from './schemas.js';
+import {DESIGN_DNA_SCHEMA_VERSION, type DesignDNA} from './types.js';
 
 const assert = (condition: boolean, message: string): void => {
   if (!condition) throw new Error(`DesignDNA validation check failed: ${message}`);

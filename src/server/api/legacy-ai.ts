@@ -1,10 +1,10 @@
 import {Router, type Response} from 'express';
-import {generateDesignSpec, refineCopy} from '../../application/legacy-ai/text-services';
-import {InMemoryBudgetStore} from '../../infrastructure/ai/budget/budget-tracker';
-import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLimitError, AISchemaError, AITimeoutError, UnsupportedAIInputError, safeErrorMessage} from '../../infrastructure/ai/providers/errors';
-import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config';
-import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses';
-import type {VisualInput} from '../../domain/visual-forensics';
+import {generateDesignSpec, refineCopy} from '../../application/legacy-ai/text-services.js';
+import {InMemoryBudgetStore} from '../../infrastructure/ai/budget/budget-tracker.js';
+import {AIAuthenticationError, AIBudgetExceededError, AIProviderError, AIRateLimitError, AISchemaError, AITimeoutError, UnsupportedAIInputError, safeErrorMessage} from '../../infrastructure/ai/providers/errors.js';
+import {loadOpenAIConfig} from '../../infrastructure/ai/providers/openai/config.js';
+import {OpenAIProvider} from '../../infrastructure/ai/providers/openai/responses.js';
+import type {VisualInput} from '../../domain/visual-forensics/index.js';
 
 const budgetStore = new InMemoryBudgetStore();
 const sendError = (response: Response, error: unknown) => {

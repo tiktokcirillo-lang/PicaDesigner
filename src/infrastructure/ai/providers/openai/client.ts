@@ -1,6 +1,6 @@
 import OpenAI from 'openai';
-import {AIAuthenticationError} from '../errors';
-import type {OpenAIConfig} from './config';
+import {AIAuthenticationError} from '../errors.js';
+import type {OpenAIConfig} from './config.js';
 
 export const createOpenAIClient = (config: OpenAIConfig): OpenAI => {
   if (!config.apiKey) throw new AIAuthenticationError('OPENAI_API_KEY is not configured on the server.');

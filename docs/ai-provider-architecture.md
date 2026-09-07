@@ -58,6 +58,8 @@ The simulator reports LOW, NORMAL, and HIGH synthetic scenarios. `REAL_CALIBRATE
 
 On Vercel, `api/index.ts` exports the same Express application as a Node.js Function. `vercel.json` routes `/api/*` to that function and grants sufficient duration for multimodal analysis. The Vite static frontend and server API are therefore deployed together without starting a persistent Express listener.
 
+The serverless dependency tree uses explicit `.js` ESM specifiers in TypeScript source and `module`/`moduleResolution: NodeNext`. TypeScript resolves those specifiers back to source `.ts` files during development, while emitted Node.js code retains valid runtime paths. This prevents extensionless imports from surviving into the Vercel function. `GET /api/health` is a provider-independent readiness check and never reads or reveals credentials.
+
 ## API errors
 
 The HTTP adapter maps unsupported input to 400, authentication to 401, exhausted project budget to 402, rate limiting to 429, validation/pipeline failures to 422, timeouts to 504, and unexpected provider failures to 500. Responses are sanitized and never include authorization headers, image payloads, keys, or full upstream bodies.

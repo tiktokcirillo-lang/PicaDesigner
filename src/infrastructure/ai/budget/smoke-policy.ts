@@ -1,4 +1,4 @@
-import {AIBudgetExceededError} from '../providers/errors';
+import {AIBudgetExceededError} from '../providers/errors.js';
 export const DEFAULT_SMOKE_MAX_COST_USD = 0.5 as const;
 export const ABSOLUTE_SMOKE_MAX_COST_USD = 0.75 as const;
 export const resolveSmokeMaxCost = (requested?: number): number => {

@@ -1,5 +1,5 @@
-import type {AIUsage} from '../types';
-import {getModelPricing} from './pricing';
+import type {AIUsage} from '../types.js';
+import {getModelPricing} from './pricing.js';
 
 export interface EstimatedCallUsage {inputTokens: number; cachedInputTokens?: number; cacheWriteTokens?: number; outputTokens: number}
 export const calculateActualCost = (model: string, usage: AIUsage): number => {

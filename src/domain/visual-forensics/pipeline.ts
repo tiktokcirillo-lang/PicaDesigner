@@ -1,4 +1,4 @@
-import type {AnalysisDepth, AnalyticalPass} from './types';
+import type {AnalysisDepth, AnalyticalPass} from './types.js';
 
 export const ANALYSIS_DEPTH_CAPABILITIES: Readonly<Record<AnalysisDepth, string[]>> = {
   quick: ['major regions', 'high-level composition', 'primary focus'],

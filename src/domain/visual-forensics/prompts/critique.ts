@@ -1,2 +1,2 @@
-import type {ForensicsPromptModule} from './types';
+import type {ForensicsPromptModule} from './types.js';
 export const CRITIQUE_PROMPT: ForensicsPromptModule = {id: 'consistency-critique', pass: 'consistency_check', objective: 'Audit evidence coverage, uncertainty, and contradictions before mapping.', instructions: ['Compare all conclusions against cited observations.', 'Record contradictory statements without hiding either.', 'Downgrade weak or speculative claims.', 'Calculate evidence quality.', 'Flag orphan region and evidence references.'], prohibited: ['Resolving ambiguity without evidence', 'Adding creative direction', 'Filling absent fields'], expectedOutputs: ['AnalysisContradiction[]', 'AnalysisUncertainty[]', 'EvidenceQuality']};

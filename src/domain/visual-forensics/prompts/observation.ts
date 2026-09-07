@@ -1,4 +1,4 @@
-import type {ForensicsPromptModule} from './types';
+import type {ForensicsPromptModule} from './types.js';
 
 export const OBSERVATION_PROMPT: ForensicsPromptModule = {
   id: 'visual-facts-only', pass: 'raw_observation', objective: 'Record directly perceptible visual facts and measurable regions without interpretation.',

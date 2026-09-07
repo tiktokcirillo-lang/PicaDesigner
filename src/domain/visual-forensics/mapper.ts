@@ -9,9 +9,9 @@ import {
   type MaterialObservation,
   type VisualEvidence,
   type VisualMovementInfluence,
-} from '../art-direction';
-import {propagateConfidence} from './confidence';
-import type {HierarchyFocus, RawVisualObservation, VisualForensicsReport} from './types';
+} from '../art-direction/index.js';
+import {propagateConfidence} from './confidence.js';
+import type {HierarchyFocus, RawVisualObservation, VisualForensicsReport} from './types.js';
 
 const toEvidence = (observation: RawVisualObservation): VisualEvidence => ({
   observation: observation.observation,

@@ -1,5 +1,5 @@
-import {AIProviderError} from '../providers/errors';
-import type {AIProvider, AIProviderId} from '../types';
+import {AIProviderError} from '../providers/errors.js';
+import type {AIProvider, AIProviderId} from '../types.js';
 export class ProviderRouter {
   private readonly providers = new Map<AIProviderId, AIProvider>();
   register(provider: AIProvider): this {this.providers.set(provider.id, provider); return this;}

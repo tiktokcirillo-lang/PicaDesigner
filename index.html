@@ -1422,6 +1422,19 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.loadingInterval = null;
   window.uploadedImage = null;
 
+  window.parseApiResponse = async function(response) {
+    const contentType = response.headers.get('content-type') || '';
+    if (contentType.toLowerCase().includes('application/json')) {
+      try {
+        return await response.json();
+      } catch (_) {
+        throw new Error(`HTTP ${response.status}: resposta JSON inválida do servidor.`);
+      }
+    }
+    await response.text();
+    throw new Error(`HTTP ${response.status}: resposta inesperada da infraestrutura.`);
+  };
+
   window.savedBrands = JSON.parse(localStorage.getItem('aria_brands') || '[]');
 
   window.updateBrandsDropdown = function() {
@@ -1842,7 +1855,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({text, tone, projectId: `copy-${Date.now()}`})
       });
-      const payload = await response.json();
+      const payload = await window.parseApiResponse(response);
       if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
       const refinedText = payload.text || '';
       document.getElementById('refinedCopyText').value = refinedText.trim();
@@ -1979,7 +1992,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({prompt, image: supportedImage, projectId: `design-${Date.now()}`})
       });
-      const payload = await response.json();
+      const payload = await window.parseApiResponse(response);
       if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
       const raw = payload.text || '';
       window.currentOutput = raw;
@@ -2018,14 +2031,10 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     } catch (err) {
       clearInterval(window.loadingInterval);
       
-      if (err.message && err.message.includes('authentication')) {
-        window.currentOutput = 'Erro de autenticação no servidor. Verifique a configuração OPENAI_API_KEY do ambiente.';
-        window.renderOutput(window.currentOutput, tool, tone);
-        window.showModal("Erro de Autenticação", "A integração de IA não está configurada corretamente no servidor.", null, false);
-      } else {
-        window.currentOutput = 'Erro ao conectar com a API. Verifique sua conexão e tente novamente.\n\nDetalhes: ' + err.message;
-        window.renderOutput(window.currentOutput, tool, tone);
-      }
+      window.showState('empty');
+      window.currentOutput = '';
+      const message = err instanceof Error ? err.message : 'Falha inesperada na API.';
+      window.showModal("Erro ao gerar design", "Não foi possível gerar a especificação. " + message, null, false);
     }
 
     document.getElementById('generateBtn').disabled = false;

@@ -1,4 +1,4 @@
-import type {AIProvider, AIStructuredRequest, AIStructuredResponse, AIUsage} from '../types';
+import type {AIProvider, AIStructuredRequest, AIStructuredResponse, AIUsage} from '../types.js';
 
 export type MockResponseFactory = (request: AIStructuredRequest, callIndex: number) => unknown;
 export class MockAIProvider implements AIProvider {

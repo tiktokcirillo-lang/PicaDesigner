@@ -1,5 +1,5 @@
 import type {ResponseUsage} from 'openai/resources/responses/responses';
-import type {AIUsage} from '../../types';
+import type {AIUsage} from '../../types.js';
 export const normalizeOpenAIUsage = (usage: ResponseUsage | null | undefined): AIUsage => ({
   inputTokens: usage?.input_tokens ?? 0,
   cachedInputTokens: usage?.input_tokens_details.cached_tokens ?? 0,

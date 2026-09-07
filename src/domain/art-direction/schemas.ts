@@ -8,7 +8,7 @@ import {
   type InferenceLevel,
   type SemanticExclusions,
   type VisualEvidence,
-} from './types';
+} from './types.js';
 
 export interface ValidationIssue {
   path: string;

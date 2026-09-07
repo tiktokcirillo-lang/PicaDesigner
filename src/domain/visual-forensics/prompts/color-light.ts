@@ -1,2 +1,2 @@
-import type {ForensicsPromptModule} from './types';
+import type {ForensicsPromptModule} from './types.js';
 export const COLOR_LIGHT_PROMPT: ForensicsPromptModule = {id: 'color-light-forensics', pass: 'domain_analysis', objective: 'Separate sampled color from color function and infer lighting conservatively.', instructions: ['Record samples separately from functional roles.', 'Estimate coverage, luminance, saturation, temperature, and contrasts.', 'Compare shadow and specular evidence before inferring light.', 'Record lighting uncertainty explicitly.'], prohibited: ['Exact studio setup claims', 'Color meaning without evidence', 'Ignoring inconsistent sources'], expectedOutputs: ['ColorForensics', 'LightingForensics']};

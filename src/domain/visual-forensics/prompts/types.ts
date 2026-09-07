@@ -1,4 +1,4 @@
-import type {AnalysisDepth, AnalyticalPassId} from '../types';
+import type {AnalysisDepth, AnalyticalPassId} from '../types.js';
 
 export interface ForensicsPromptModule {
   id: string;

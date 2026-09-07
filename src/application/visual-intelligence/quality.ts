@@ -1,5 +1,5 @@
-import type {DesignDNA} from '../../domain/art-direction';
-import type {VisualForensicsReport} from '../../domain/visual-forensics';
+import type {DesignDNA} from '../../domain/art-direction/index.js';
+import type {VisualForensicsReport} from '../../domain/visual-forensics/index.js';
 
 export interface QualityDimensions {evidenceIntegrity: number; compositionReasoning: number; hierarchyReasoning: number; typographicReasoning: number; colorReasoning: number; physicalPlausibility: number; semanticSeparation: number; antiAiDetection: number; confidenceCalibration: number}
 export interface QualityProfile {score: number; dimensions: QualityDimensions; issues: string[]; requiresCritic: boolean}

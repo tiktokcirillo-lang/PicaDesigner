@@ -1,8 +1,8 @@
-import {BudgetedAIExecutor} from '../../infrastructure/ai/budget/executor';
-import {createLedger, type BudgetStore} from '../../infrastructure/ai/budget/budget-tracker';
-import type {OpenAIConfig} from '../../infrastructure/ai/providers/openai/config';
-import type {AIProvider, AIUsageResult} from '../../infrastructure/ai/types';
-import type {VisualInput} from '../../domain/visual-forensics';
+import {BudgetedAIExecutor} from '../../infrastructure/ai/budget/executor.js';
+import {createLedger, type BudgetStore} from '../../infrastructure/ai/budget/budget-tracker.js';
+import type {OpenAIConfig} from '../../infrastructure/ai/providers/openai/config.js';
+import type {AIProvider, AIUsageResult} from '../../infrastructure/ai/types.js';
+import type {VisualInput} from '../../domain/visual-forensics/index.js';
 
 const TEXT_RESULT_SCHEMA = {
   type: 'object',

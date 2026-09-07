@@ -1,12 +1,12 @@
 import {Buffer} from 'node:buffer';
 import OpenAI from 'openai';
 import type {ResponseInputContent} from 'openai/resources/responses/responses';
-import type {VisualInput} from '../../../../domain/visual-forensics';
-import type {AIProvider, AIStructuredRequest, AIStructuredResponse} from '../../types';
-import {AIAuthenticationError, AIProviderError, AIRateLimitError, AIResponseError, AITimeoutError, UnsupportedAIInputError} from '../errors';
-import {createOpenAIClient} from './client';
-import type {OpenAIConfig} from './config';
-import {normalizeOpenAIUsage} from './usage';
+import type {VisualInput} from '../../../../domain/visual-forensics/index.js';
+import type {AIProvider, AIStructuredRequest, AIStructuredResponse} from '../../types.js';
+import {AIAuthenticationError, AIProviderError, AIRateLimitError, AIResponseError, AITimeoutError, UnsupportedAIInputError} from '../errors.js';
+import {createOpenAIClient} from './client.js';
+import type {OpenAIConfig} from './config.js';
+import {normalizeOpenAIUsage} from './usage.js';
 
 const ALLOWED_MEDIA = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const TRANSIENT_STATUS = new Set([500, 502, 503, 504]);
