@@ -1155,15 +1155,27 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
       <div class="field-group">
         <label class="field-label">Formato do Projeto</label>
         <select id="formatSelect">
-          <option value="Apresentação (16:9 - 1920x1080)">Apresentação (16:9 - 1920x1080)</option>
-          <option value="Carrossel Vertical (1080x1350)">Carrossel Vertical (1080x1350) - Instagram/LinkedIn</option>
-          <option value="Carrossel Quadrado (1080x1080)">Carrossel Quadrado (1080x1080) - Instagram/LinkedIn</option>
-          <option value="Post Estático Vertical (1080x1350)">Post Estático Vertical (1080x1350)</option>
-          <option value="Post Estático Quadrado (1080x1080)">Post Estático Quadrado (1080x1080)</option>
-          <option value="Stories / Reels (1080x1920)">Stories / Reels (1080x1920)</option>
-          <option value="LinkedIn Banner (1584x396)">LinkedIn Banner (1584x396)</option>
-          <option value="Twitter Header (1500x500)">Twitter Header (1500x500)</option>
-          <option value="Vídeo Curto / Post-roll (1080x1920)">Vídeo Curto / Post-roll (1080x1920) - TikTok/Reels</option>
+          <optgroup label="APRESENTAÇÃO">
+            <option value="Apresentação (16:9 - 1920x1080)">Apresentação 16:9 — 1920×1080</option>
+          </optgroup>
+          <optgroup label="SOCIAL / CONTEÚDO">
+            <option value="Carrossel Vertical (1080x1350)">Carrossel Vertical (1080x1350) - Instagram/LinkedIn</option>
+            <option value="Carrossel Quadrado (1080x1080)">Carrossel Quadrado (1080x1080) - Instagram/LinkedIn</option>
+            <option value="Post Estático Vertical (1080x1350)">Post Estático Vertical (1080x1350)</option>
+            <option value="Post Estático Quadrado (1080x1080)">Post Estático Quadrado (1080x1080)</option>
+            <option value="Stories / Reels (1080x1920)">Stories / Reels (1080x1920)</option>
+            <option value="Vídeo Curto / Post-roll (1080x1920)">Vídeo Curto / Post-roll (1080x1920) - TikTok/Reels</option>
+          </optgroup>
+          <optgroup label="META ADS">
+            <option value="meta_ads_square">Meta Ads — Quadrado 1:1 — 1080×1080</option>
+            <option value="meta_ads_feed_portrait">Meta Ads — Feed Vertical 4:5 — 1080×1350</option>
+            <option value="meta_ads_story_reels">Meta Ads — Stories / Reels 9:16 — 1080×1920</option>
+            <option value="meta_ads_landscape">Meta Ads — Horizontal 1.91:1 — 1200×628</option>
+          </optgroup>
+          <optgroup label="OUTROS">
+            <option value="LinkedIn Banner (1584x396)">LinkedIn Banner (1584x396)</option>
+            <option value="Twitter Header (1500x500)">Twitter Header (1500x500)</option>
+          </optgroup>
         </select>
       </div>
 
@@ -1992,6 +2004,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     if (!window.validateInputs()) return;
 
     const format = document.getElementById('formatSelect').value;
+    const formatContext = format.startsWith('meta_ads_') ? {platform: 'meta', usage: 'advertising'} : undefined;
     const tool = document.getElementById('toolSelect').value;
     const hasBrand = document.getElementById('hasBrand').checked;
     const color1 = document.getElementById('hex1').value;
@@ -2037,6 +2050,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           projectId: window.activeProjectId,
           copy: text,
           format,
+          formatContext,
           destinationTool: tool,
           tone,
           brandInput,

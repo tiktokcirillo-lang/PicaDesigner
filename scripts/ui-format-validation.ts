@@ -1,0 +1,11 @@
+import {strict as assert} from 'node:assert';
+import {readFileSync} from 'node:fs';
+const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+const ids=['meta_ads_square','meta_ads_feed_portrait','meta_ads_story_reels','meta_ads_landscape'];
+for(const [index,id] of ids.entries())assert(html.includes(`value="${id}"`),String.fromCharCode(65+index));
+assert(html.includes('<optgroup label="META ADS">'),'Meta optgroup');
+assert(html.includes("format.startsWith('meta_ads_') ? {platform: 'meta', usage: 'advertising'}"),'F format context');
+for(const legacy of ['Apresentação (16:9 - 1920x1080)','Carrossel Vertical (1080x1350)','Post Estático Quadrado (1080x1080)','LinkedIn Banner (1584x396)','Twitter Header (1500x500)'])assert(html.includes(`value="${legacy}"`),'G legacy format');
+assert(html.includes('format: format')&&html.includes("document.getElementById('formatSelect').value = state.format"),'H save/restore');
+assert(!html.includes('value="meta_ads_family"'),'single-output UI must not expose family');
+console.log('Format selector validation passed: canonical Meta values, context, legacy and save/restore A-H.');

@@ -2,12 +2,13 @@ import type {AIUsageResult} from '../../infrastructure/ai/types.js';
 import type {ReferenceIntelligenceSession} from '../reference-intelligence/index.js';
 import type {AdaptedDesignConstraints, BrandInput, BrandIntelligenceSession, BrandReferenceCompatibilityReport} from '../../domain/brand-intelligence/index.js';
 import type {CreativeDirectionSession} from '../../domain/creative-direction/index.js';
-import type {LayoutIntelligenceSession} from '../../domain/layout-engine/index.js';
+import type {FormatContext,LayoutIntelligenceSession} from '../../domain/layout-engine/index.js';
 
 export interface GenerateDesignSpecRequest {
   projectId: string;
   copy: string;
   format: string;
+  formatContext?: FormatContext;
   destinationTool: string;
   tone: string;
   brandInput?: BrandInput;
