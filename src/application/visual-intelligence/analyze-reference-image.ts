@@ -1,5 +1,4 @@
 import {mapForensicsToDesignDNA, type VisualForensicsInput} from '../../domain/visual-forensics/index.js';
-import {AIBudgetExceededError} from '../../infrastructure/ai/providers/errors.js';
 import {OpenAIVisualForensicsExtractor} from '../../infrastructure/ai/providers/openai/extractor.js';
 import type {OpenAIConfig} from '../../infrastructure/ai/providers/openai/config.js';
 import {BudgetedAIExecutor} from '../../infrastructure/ai/budget/executor.js';
@@ -23,11 +22,8 @@ const validCritic = (value: unknown): value is SolCriticResult => Boolean(value 
 
 export const analyzeReferenceImage = async (request: AnalyzeReferenceImageRequest, dependencies: AnalyzeDependencies): Promise<VisualIntelligenceResult> => {
   const {provider, budgetStore, config} = dependencies;
-  const month = new Date().toISOString().slice(0, 7);
-  const monthly = await budgetStore.getMonth(month, config.monthlyBudgetUsd);
-  if (monthly.spentUsd >= monthly.limitUsd) throw new AIBudgetExceededError('Monthly AI budget is exhausted.');
   const initialLedger = await budgetStore.getProject(request.projectId) ?? createLedger(request.projectId);
-  const executor = new BudgetedAIExecutor(provider, budgetStore, config.maxProjectCostUsd, initialLedger, monthly.remainingUsd);
+  const executor = new BudgetedAIExecutor(provider,budgetStore,config.maxProjectCostUsd,initialLedger,Number.POSITIVE_INFINITY,{monthlyLimitUsd:config.monthlyBudgetUsd,safetyFactor:config.budgetReservationSafetyFactor,ttlSeconds:config.budgetReservationTtlSeconds,stage:'visual_forensics'});
   const extractor = new OpenAIVisualForensicsExtractor(executor, new ModelRouter(config), request.projectId, initialLedger);
   const forensics = await extractor.analyze(request);
   const designDNA = mapForensicsToDesignDNA(forensics);

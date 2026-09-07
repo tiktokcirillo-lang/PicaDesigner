@@ -6,7 +6,7 @@ Exactly three candidate routes are expected. `calculateCreativeRouteDistance()` 
 
 ## Risks and hard gates
 
-Baseline risks in Brand × Reference compatibility remain distinct from route risks. `calculateRouteBrandDriftRisk()` and `calculateRouteReferenceImitationRisk()` use traits declared by each proposed route. Literal color/type/hero/device/treatment transfer raises imitation risk; departures in color roles, typography, logo handling, image character, shapes, distinctive assets, and prohibited behavior raise brand drift. These are evaluated locally, not copied from provider scores.
+Baseline risks in Brand × Reference compatibility remain distinct from route risks. `calculateRouteBrandDriftRisk()` and `calculateRouteReferenceImitationRisk()` compare referenced constraints, required distinctive assets, validated reference principles, and literal transfer signals. Provider-declared traits are retained only as secondary evidence.
 
 A route is ineligible when it declares a hard brand or logo violation, invents a commercial claim, has imitation risk above 0.40, brand drift above 0.35, constraint compliance below 0.70, or communication fit below 0.60. No ineligible fallback is silently selected.
 

@@ -34,4 +34,4 @@ The existing Generate button invisibly ensures reference, brand, and Creative Di
 
 Creative Direction targets US$0.12 and has a US$0.18 stage ceiling. Its executor receives the lower of that stage ceiling and the remaining US$0.75 project limit. Initial generation and the single repair share this stage allowance. Reference, Creative Direction, Design Spec, and future critic calls use one application `BudgetStore` and load the existing project ledger.
 
-The default `InMemoryBudgetStore` is useful locally but is not transactionally durable across Vercel cold starts or parallel instances. `DurableBudgetStore` marks the production extension point; a transactional external implementation is required before the hard cap can be guaranteed across all serverless invocations.
+Local development uses an atomic in-process store. Production uses Upstash Redis reservations through `DurableBudgetStore`; missing or unavailable durable budget infrastructure fails closed before a paid call.

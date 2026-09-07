@@ -33,7 +33,7 @@ const resultFromLedger = (ledger: ReturnType<typeof createLedger>, config: OpenA
 
 const executeTextTask = async (input: {projectId: string; task: 'refine_copy' | 'generate_design_spec'; instructions: string; prompt: string; image?: VisualInput; maxOutputTokens: number}, dependencies: Dependencies): Promise<TextTaskResult> => {
   const ledger = await dependencies.budgetStore.getProject(input.projectId) ?? createLedger(input.projectId);
-  const executor = new BudgetedAIExecutor(dependencies.provider, dependencies.budgetStore, dependencies.config.maxProjectCostUsd, ledger);
+  const executor = new BudgetedAIExecutor(dependencies.provider,dependencies.budgetStore,dependencies.config.maxProjectCostUsd,ledger,Number.POSITIVE_INFINITY,{monthlyLimitUsd:dependencies.config.monthlyBudgetUsd,safetyFactor:dependencies.config.budgetReservationSafetyFactor,ttlSeconds:dependencies.config.budgetReservationTtlSeconds,stage:input.task==='generate_design_spec'?'design_spec':'other'});
   const response = await executor.execute<{text: string}>({
     projectId: input.projectId,
     pass: input.task,
@@ -65,15 +65,15 @@ export const generateDesignSpec = async (input: GenerateDesignSpecRequest, depen
     if (!validateReferenceSession(input.referenceIntelligence, input.projectId)) throw new Error('Invalid or incompatible reference intelligence session.');
     if (!isReferenceQualityUsable(input.referenceIntelligence)) throw new Error('Reference intelligence quality is below the minimum threshold.');
   }
+  const builder = new DesignSpecPromptBuilder();
+  const brand = builder.resolveBrand(input);
   if (input.creativeDirection) {
-    const fingerprint = await fingerprintCreativeDirection({projectId: input.projectId, copy: input.copy, format: input.format, destinationTool: input.destinationTool, tone: input.tone, brandIntelligence: input.brandIntelligence, referenceIntelligence: input.referenceIntelligence, adaptedDesignConstraints: input.adaptedDesignConstraints});
+    const fingerprint = await fingerprintCreativeDirection({projectId: input.projectId, copy: input.copy, format: input.format, destinationTool: input.destinationTool, tone: input.tone, brandIntelligence: input.brandIntelligence, referenceIntelligence: input.referenceIntelligence, adaptedDesignConstraints: input.adaptedDesignConstraints??brand.adapted});
     if (input.creativeDirection.inputFingerprint !== fingerprint) throw new Error('Não foi possível construir uma direção criativa válida.');
   }
   const built = input.legacyPrompt
     ? {instructions: 'Produce a professional Portuguese visual design specification. Return only the completed specification in the structured text field.', input: input.legacyPrompt, decisions: []}
     : undefined;
-  const builder = new DesignSpecPromptBuilder();
-  const brand = builder.resolveBrand(input);
   const finalPrompt = built ?? builder.build(input, brand);
   const result = await executeTextTask({projectId: input.projectId, task: 'generate_design_spec', instructions: finalPrompt.instructions, prompt: finalPrompt.input, maxOutputTokens: 9_000}, dependencies);
   return {

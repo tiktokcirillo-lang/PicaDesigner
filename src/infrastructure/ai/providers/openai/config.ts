@@ -2,12 +2,13 @@ export const AI_DEFAULTS = {
   forensicsModel: 'gpt-5.6-terra', criticModel: 'gpt-5.6-sol', requestTimeoutMs: 120_000,
   maxRetries: 1, maxImageMb: 10, maxProjectCostUsd: 0.75, targetProjectCostUsd: 0.50,
   monthlyBudgetUsd: 15, solEscalationEnabled: true,
+  budgetReservationTtlSeconds: 600, budgetReservationSafetyFactor: 1.20, allowInMemoryBudget: false,
 } as const;
 
 export interface OpenAIConfig {
   apiKey: string; forensicsModel: string; criticModel: string; requestTimeoutMs: number; maxRetries: number;
   maxImageMb: number; maxProjectCostUsd: number; targetProjectCostUsd: number; monthlyBudgetUsd: number;
-  solEscalationEnabled: boolean;
+  solEscalationEnabled: boolean; budgetReservationTtlSeconds:number; budgetReservationSafetyFactor:number; allowInMemoryBudget:boolean;
 }
 const positiveNumber = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -28,4 +29,7 @@ export const loadOpenAIConfig = (env: NodeJS.ProcessEnv = process.env): OpenAICo
   targetProjectCostUsd: positiveNumber(env.AI_TARGET_PROJECT_COST_USD, AI_DEFAULTS.targetProjectCostUsd),
   monthlyBudgetUsd: positiveNumber(env.AI_MONTHLY_BUDGET_USD, AI_DEFAULTS.monthlyBudgetUsd),
   solEscalationEnabled: (env.AI_SOL_ESCALATION_ENABLED ?? 'true').toLowerCase() === 'true',
+  budgetReservationTtlSeconds: positiveNumber(env.AI_BUDGET_RESERVATION_TTL_SECONDS, AI_DEFAULTS.budgetReservationTtlSeconds),
+  budgetReservationSafetyFactor: positiveNumber(env.AI_BUDGET_RESERVATION_SAFETY_FACTOR, AI_DEFAULTS.budgetReservationSafetyFactor),
+  allowInMemoryBudget: (env.AI_ALLOW_INMEMORY_BUDGET ?? 'false').toLowerCase() === 'true',
 });

@@ -36,9 +36,7 @@ The normal target is $0.50 and the hard project limit is $0.75. A budget estimat
 
 Sol escalation is deterministic: low quality score, weak evidence, excessive speculation, low confidence, material contradictions, or important Anti-AI ambiguity can request audit. The call is skipped with `budget_blocked` when estimated project cost would exceed the hard limit. Sol receives a compact audit packet and does not recreate or creatively redirect the analysis.
 
-`BudgetStore` is separated from `InMemoryBudgetStore`. The latter is process-local and non-persistent; restarting the server loses monthly and project totals. Production deployment requires a transactional persistent store before budget enforcement can be considered durable across instances.
-
-All application endpoints share one process-level store and load a prior ledger by `projectId`; `ProjectAIBudgetCoordinator` centralizes that lifecycle for future services. This prevents a stage change from resetting the cap within one warm process. `DurableBudgetStore` is the explicit extension contract for atomic cross-instance enforcement because a Vercel cold start can still create a fresh in-memory process.
+`BudgetStore` now supports atomic reserve, commit, release, ambiguous-outcome handling, and project/month/stage snapshots. Production uses `UpstashBudgetStore`; development can use the in-process atomic store. `ProjectAIBudgetCoordinator` applies the same project and UTC monthly limits to every executor call. Production without a durable store fails closed. See `docs/durable-ai-budget.md`.
 
 ## Quality and semantic firewall
 

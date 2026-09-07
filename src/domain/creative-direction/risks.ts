@@ -1,4 +1,4 @@
-import type {ArtDirectionRoute} from './types.js';
+import type {ArtDirectionRoute,RouteGovernanceContext} from './types.js';
 const clamp=(v:number)=>Math.max(0,Math.min(1,v));
-export const calculateRouteBrandDriftRisk=(route:ArtDirectionRoute)=>clamp((route.declaredBrandDriftTraits?.length??0)/5+(route.declaredHardViolations?.length??0)*0.5);
-export const calculateRouteReferenceImitationRisk=(route:ArtDirectionRoute)=>clamp((route.literalReferenceTraits?.length??0)/5);
+export const calculateRouteBrandDriftRisk=(route:ArtDirectionRoute,context?:RouteGovernanceContext)=>{const brand=context?.brandIntelligence?.brandDNA,requiredAssets=brand?.brandDistinctiveness?.filter(item=>item.mustPreserve)??[],missingAssets=requiredAssets.filter(item=>!route.distinctiveAssetRefsUsed.includes(item.id)).length,knownConstraints=new Set([...(brand?.hardConstraints??[]),...(brand?.prohibitedBehaviors??[])].map(item=>item.id)),violations=route.brandConstraintRefsPotentiallyViolated.filter(id=>knownConstraints.has(id)).length;return clamp(missingAssets*.3+violations*.35+(route.declaredBrandDriftTraits?.length??0)*.08+(route.declaredHardViolations?.length??0)*.25);};
+export const calculateRouteReferenceImitationRisk=(route:ArtDirectionRoute,context?:RouteGovernanceContext)=>{const literal=(route.literalReferenceTraits?.length??0)*.18,unknown=context?route.referencePrincipleRefs.filter(id=>!(context.referenceIntelligence?.forensics?.inferredPrinciples.some(item=>item.principleId===id)??false)).length*.2:0;return clamp(literal+unknown);};

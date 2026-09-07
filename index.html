@@ -1879,7 +1879,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       const response = await fetch('/api/ai/refine-copy', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({text, tone, projectId: `copy-${Date.now()}`})
+        body: JSON.stringify({text, tone, projectId: window.activeProjectId})
       });
       const payload = await window.parseApiResponse(response);
       if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);

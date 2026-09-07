@@ -5,6 +5,8 @@ export * from './budget/executor.js';
 export * from './budget/pricing.js';
 export * from './budget/project-coordinator.js';
 export * from './budget/runtime-store.js';
+export * from './budget/money.js';
+export * from './budget/stores/index.js';
 export * from './budget/smoke-policy.js';
 export * from './providers/contract.js';
 export * from './providers/errors.js';
