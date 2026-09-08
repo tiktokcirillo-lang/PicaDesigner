@@ -1,0 +1,4 @@
+const json=async(response:Response)=>{const body=await response.json() as {error?:string;project?:{revision:number};revision?:number};if(!response.ok)throw new Error(body.error??'Project persistence failed.');return body};
+export const ensureDurableProject=async(projectId:string)=>json(await fetch('/api/projects',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId,operationId:`create:${projectId}`})}));
+export const saveDurableCheckpoint=async(input:{projectId:string;versionId:string;stage:string;operationId:string;fingerprint:string;expectedRevision:number;payload:unknown})=>json(await fetch(`/api/projects/${encodeURIComponent(input.projectId)}/checkpoints`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}));
+export const restoreDurableProject=async(projectId:string)=>json(await fetch(`/api/projects/${encodeURIComponent(projectId)}/state`));

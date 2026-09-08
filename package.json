@@ -16,6 +16,9 @@
     "critic:validation": "tsx src/domain/art-director-review/art-director-review.validation.ts",
     "render:validation": "tsx src/domain/render-engine/render-engine.validation.ts",
     "export:validation": "tsx src/domain/export-engine/export-engine.validation.ts",
+    "persistence:validation": "tsx src/infrastructure/project-persistence/persistence.validation.ts",
+    "persistence:cold-start-validation": "tsx src/infrastructure/project-persistence/cold-start.validation.ts",
+    "db:validate": "tsx scripts/db-validate.ts",
     "image:validation": "tsx src/domain/image-assets/image-assets.validation.ts",
     "asset-storage:validation": "tsx src/infrastructure/image-generation/asset-storage.validation.ts",
     "visual-qa:validation": "tsx src/domain/post-render-review/post-render-review.validation.ts && tsx src/infrastructure/post-render-review/multimodal.validation.ts",
@@ -26,6 +29,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.1.14",
     "@upstash/redis": "^1.38.4",
@@ -49,6 +53,7 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "autoprefixer": "^10.4.21",
+    "prettier": "^3.9.6",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

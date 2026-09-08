@@ -1380,6 +1380,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   import {ensureImageAssets} from '/src/client/image-assets.ts';
   import {ensurePostRenderReview} from '/src/client/post-render-review.ts';
   import {createProductionExport, getProductionDownload} from '/src/client/production-export.ts';
+  import {ensureDurableProject, restoreDurableProject, saveDurableCheckpoint} from '/src/client/project-persistence.ts';
   import {createBrandIntelligenceSession} from '/src/domain/brand-intelligence/index.ts';
 
   const DB_NAME = 'AriaDB';
@@ -2040,6 +2041,9 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.animateLoadingSteps();
 
     try {
+      const durableProject = await ensureDurableProject(window.activeProjectId);
+      window.projectRevision = durableProject.revision;
+      const persistStage = async (stage, payload, fingerprint) => { const saved = await saveDurableCheckpoint({projectId: window.activeProjectId, versionId: window.reviewedDesignPackage?.reviewSessionId || `version:${window.activeProjectId}`, stage, operationId: `${stage}:${fingerprint}`, fingerprint, expectedRevision: window.projectRevision, payload}); window.projectRevision = saved.project.revision; };
       const supportedImage = window.uploadedImage && ['image/jpeg', 'image/png', 'image/webp'].includes(window.uploadedImage.mimeType)
         ? {kind: 'base64', mediaType: window.uploadedImage.mimeType, data: window.uploadedImage.data}
         : undefined;
@@ -2060,13 +2064,17 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
         throw new Error('Não foi possível construir uma direção criativa válida. ' + (error instanceof Error ? error.message : 'Tente novamente.'));
       }
       if (window.creativeDirection.status !== 'ready') throw new Error('Não foi possível construir uma direção criativa válida.');
+      await persistStage('creative_direction', window.creativeDirection, window.creativeDirection.sessionId);
       window.showCreativeDiagnostics(window.creativeDirection);
       window.layoutIntelligence = await ensureLayoutIntelligence({projectId:window.activeProjectId,creativeDirection:window.creativeDirection,brandIntelligence:window.brandSession,referenceIntelligence:window.referenceSession,format,formatContext,destinationTool:tool,existingSession:window.layoutIntelligence});
+      await persistStage('layout', window.layoutIntelligence, window.layoutIntelligence.sessionId);
       window.artDirectorReview = await ensureArtDirectorReview({projectId:window.activeProjectId,creativeDirection:window.creativeDirection,layoutIntelligence:window.layoutIntelligence,brandIntelligence:window.brandSession,referenceIntelligence:window.referenceSession,format,destinationTool:tool,existingReviewSession:window.artDirectorReview});
+      await persistStage('art_director_review', window.artDirectorReview, window.artDirectorReview.reviewSessionId);
       if(!window.artDirectorReview.readyForRender||!window.artDirectorReview.reviewedDesignPackage)throw new Error('Não foi possível aprovar a direção de arte para produção.');
       window.reviewedDesignPackage=window.artDirectorReview.reviewedDesignPackage;
       window.renderSession=await ensureRenderSession({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,assetRegistry:{projectId:window.activeProjectId,assets:[]},destinationTool:tool,existingSession:window.renderSession,fontAvailability:['Arial','Helvetica','sans-serif']});
-      if(window.renderSession.readiness.missingRequiredAssets.length){window.imageAssetSession=await ensureImageAssets({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,renderSession:window.renderSession,assetRegistry:{projectId:window.activeProjectId,assets:window.imageAssetSession?.registry?.assets??[]},quality:'standard',fontAvailability:['Arial','Helvetica','sans-serif']});window.renderSession=window.imageAssetSession.renderSession}
+      await persistStage('render_session', window.renderSession, window.renderSession.inputFingerprint);
+      if(window.renderSession.readiness.missingRequiredAssets.length){window.imageAssetSession=await ensureImageAssets({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,renderSession:window.renderSession,assetRegistry:{projectId:window.activeProjectId,assets:window.imageAssetSession?.registry?.assets??[]},quality:'standard',fontAvailability:['Arial','Helvetica','sans-serif']});window.renderSession=window.imageAssetSession.renderSession;await persistStage('image_asset_session',window.imageAssetSession,window.imageAssetSession.sessionId)}
       window.postRenderReview=await ensurePostRenderReview({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,renderSession:window.renderSession,imageAssetSession:window.imageAssetSession,assetRegistry:window.imageAssetSession?.registry??{projectId:window.activeProjectId,assets:[]},existingSession:window.postRenderReview});if(window.imageAssetSession?.generatedAssets?.length&&!window.postRenderReview.visualApproved)throw new Error('A revisão visual dos pixels não aprovou a peça para produção.');
       window.updateProductionExportState();
       const response = await fetch('/api/ai/generate-design-spec', {
@@ -2362,11 +2370,11 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     });
   }
 
-  window.revertProject = function(id) {
+  window.revertProject = async function(id) {
     const p = window.projects.find(x => x.id === id);
     if (!p) return;
 
-    const state = p.state || {
+    let state = p.state || {
       text: p.label,
       format: 'Apresentação (16:9 - 1920x1080)',
       tool: p.tool || 'PowerPoint',
@@ -2385,6 +2393,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       uploadedImage: null
     };
 
+    try { const durable = await restoreDurableProject(state.projectId || String(id)); state = {...state, creativeDirection: durable.workflow?.creative_direction ?? state.creativeDirection, layoutIntelligence: durable.workflow?.layout ?? state.layoutIntelligence, artDirectorReview: durable.workflow?.art_director_review ?? state.artDirectorReview, renderSession: durable.workflow?.render_session ?? state.renderSession, imageAssetSession: durable.workflow?.image_asset_session ?? state.imageAssetSession, postRenderReview: durable.workflow?.post_render_review ?? state.postRenderReview, productionExportSession: durable.exports?.at?.(-1) ?? state.productionExportSession}; window.projectRevision = durable.project.revision; } catch { /* local cache remains a non-authoritative offline display fallback */ }
     // Restore inputs
     document.getElementById('copyText').value = state.text || '';
     if (state.format) document.getElementById('formatSelect').value = state.format;
@@ -2672,7 +2681,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     button.textContent = 'Preparando arquivo...';
     try {
       const requested = format === 'zip' ? ['png', 'webp', 'pdf', 'zip'] : [format];
-      window.productionExportSession = await createProductionExport({projectId: window.activeProjectId, visualApprovedPackage: window.postRenderReview.approvedPackage, formats: requested, profile: format === 'zip' ? 'campaign_package' : format === 'pdf' ? 'client_proof_pdf' : format === 'webp' ? 'social_webp' : 'social_png', includeManifest: format === 'zip', includeZip: format === 'zip', existingSession: window.productionExportSession});
+      window.productionExportSession = await createProductionExport({projectId: window.activeProjectId, formats: requested, profile: format === 'zip' ? 'campaign_package' : format === 'pdf' ? 'client_proof_pdf' : format === 'webp' ? 'social_webp' : 'social_png', includeManifest: format === 'zip', includeZip: format === 'zip', operationId: `ui-export:${window.activeProjectId}:${format}`});
       const artifact = format === 'zip' ? window.productionExportSession.packageArtifact : window.productionExportSession.artifacts.find(item => item.format === format);
       if (!artifact) throw new Error('Arquivo final não foi produzido.');
       const handle = await getProductionDownload({projectId: window.activeProjectId, exportSessionId: window.productionExportSession.sessionId, artifactId: artifact.artifactId});

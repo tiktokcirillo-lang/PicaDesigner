@@ -12,6 +12,8 @@ import {applicationGeneratedAssetStore} from '../infrastructure/image-generation
 import {createVisualQaRouter} from './api/visual-qa.js';
 import {createExportsRouter} from './api/exports.js';
 import {applicationProductionArtifactStore} from '../infrastructure/export-engine/index.js';
+import {createProjectsRouter} from './api/projects.js';
+import {applicationProjectRepository} from '../infrastructure/project-persistence/index.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -21,6 +23,8 @@ export const createServerApp = () => {
   app.get('/api/health/ai-budget',async(_request,response)=>response.json(await applicationBudgetStore.health()));
   app.get('/api/health/asset-store',async(_request,response)=>response.json(await applicationGeneratedAssetStore.health()));
   app.get('/api/health/export-store',async(_request,response)=>response.json(await applicationProductionArtifactStore.health()));
+  app.get('/api/health/project-store',async(_request,response)=>response.json(await applicationProjectRepository.health()));
+  app.use('/api/projects',createProjectsRouter());
   app.use('/api/visual-forensics', createVisualForensicsRouter());
   app.use('/api/creative-direction', createCreativeDirectionRouter());
   app.use('/api/layout', createLayoutRouter());
