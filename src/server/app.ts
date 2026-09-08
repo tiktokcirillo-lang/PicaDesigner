@@ -6,6 +6,7 @@ import {createCreativeDirectionRouter} from './api/creative-direction.js';
 import {applicationBudgetStore} from '../infrastructure/ai/budget/runtime-store.js';
 import {createLayoutRouter} from './api/layout.js';
 import {createArtDirectorReviewRouter} from './api/art-director-review.js';
+import {createRenderRouter} from './api/render.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -17,6 +18,7 @@ export const createServerApp = () => {
   app.use('/api/creative-direction', createCreativeDirectionRouter());
   app.use('/api/layout', createLayoutRouter());
   app.use('/api/art-director',createArtDirectorReviewRouter());
+  app.use('/api/render',createRenderRouter());
   app.use('/api/ai', createLegacyAIRouter());
   return app;
 };
