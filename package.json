@@ -17,12 +17,14 @@
     "render:validation": "tsx src/domain/render-engine/render-engine.validation.ts",
     "image:validation": "tsx src/domain/image-assets/image-assets.validation.ts",
     "asset-storage:validation": "tsx src/infrastructure/image-generation/asset-storage.validation.ts",
+    "visual-qa:validation": "tsx src/domain/post-render-review/post-render-review.validation.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
+    "@resvg/resvg-js": "^2.6.2",
     "@tailwindcss/vite": "^4.1.14",
     "@upstash/redis": "^1.38.4",
     "@vercel/blob": "^2.8.0",

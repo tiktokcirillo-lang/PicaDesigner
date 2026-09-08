@@ -9,6 +9,7 @@ import {createArtDirectorReviewRouter} from './api/art-director-review.js';
 import {createRenderRouter} from './api/render.js';
 import {createImageAssetsRouter} from './api/image-assets.js';
 import {applicationGeneratedAssetStore} from '../infrastructure/image-generation/index.js';
+import {createVisualQaRouter} from './api/visual-qa.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -23,6 +24,7 @@ export const createServerApp = () => {
   app.use('/api/art-director',createArtDirectorReviewRouter());
   app.use('/api/render',createRenderRouter());
   app.use('/api/assets',createImageAssetsRouter());
+  app.use('/api/visual-qa',createVisualQaRouter());
   app.use('/api/ai', createLegacyAIRouter());
   return app;
 };

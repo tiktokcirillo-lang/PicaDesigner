@@ -1372,6 +1372,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   import {ensureArtDirectorReview} from '/src/client/art-director-review.ts';
   import {ensureRenderSession} from '/src/client/render-session.ts';
   import {ensureImageAssets} from '/src/client/image-assets.ts';
+  import {ensurePostRenderReview} from '/src/client/post-render-review.ts';
   import {createBrandIntelligenceSession} from '/src/domain/brand-intelligence/index.ts';
 
   const DB_NAME = 'AriaDB';
@@ -1449,6 +1450,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.reviewedDesignPackage = null;
   window.renderSession = null;
   window.imageAssetSession = null;
+  window.postRenderReview = null;
   window.activeProjectId = crypto.randomUUID();
   window.referenceAnalysisDepth = 'standard';
 
@@ -2057,6 +2059,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       window.reviewedDesignPackage=window.artDirectorReview.reviewedDesignPackage;
       window.renderSession=await ensureRenderSession({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,assetRegistry:{projectId:window.activeProjectId,assets:[]},destinationTool:tool,existingSession:window.renderSession,fontAvailability:['Arial','Helvetica','sans-serif']});
       if(window.renderSession.readiness.missingRequiredAssets.length){window.imageAssetSession=await ensureImageAssets({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,renderSession:window.renderSession,assetRegistry:{projectId:window.activeProjectId,assets:window.imageAssetSession?.registry?.assets??[]},quality:'standard',fontAvailability:['Arial','Helvetica','sans-serif']});window.renderSession=window.imageAssetSession.renderSession}
+      window.postRenderReview=await ensurePostRenderReview({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,renderSession:window.renderSession,imageAssetSession:window.imageAssetSession,assetRegistry:window.imageAssetSession?.registry??{projectId:window.activeProjectId,assets:[]},existingSession:window.postRenderReview});if(window.imageAssetSession?.generatedAssets?.length&&!window.postRenderReview.visualApproved)throw new Error('A revisão visual dos pixels não aprovou a peça para produção.');
       const response = await fetch('/api/ai/generate-design-spec', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -2080,6 +2083,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       window.layoutIntelligence = payload.layoutIntelligence || null;
       if(new URLSearchParams(window.location.search).get('debug')==='render'&&window.renderSession){const s=window.renderSession,scene=s.renderDocument.scenes[0],artifact=s.artifacts[0];let p=document.getElementById('renderDebugPanel');if(!p){p=document.createElement('aside');p.id='renderDebugPanel';p.style.cssText='position:fixed;right:12px;top:12px;z-index:99999;background:#fff;color:#111;border:2px solid #16a34a;padding:12px;font:11px/1.4 monospace;max-width:420px;max-height:80vh;overflow:auto';document.body.appendChild(p)}p.innerHTML=`<strong>RENDER DEBUG — PLACEHOLDERS ARE NOT FINAL</strong><p>Status ${s.status} · production ${s.readiness.productionReady} · scene ${scene?.sceneId} · ${scene?.width}×${scene?.height} · nodes ${scene?.nodes.length} · requirements ${scene?.assetManifest.requirements.length} · missing ${s.readiness.missingRequiredAssets.join(', ')||'none'} · fonts ${s.readiness.fontIssues.join(', ')||'ok'} · fit ${s.readiness.textFitIssues.join(', ')||'ok'} · checksum ${artifact?.checksum}</p><div style="max-height:45vh;overflow:auto">${artifact?.svg??''}</div>`}
       if(new URLSearchParams(window.location.search).get('debug')==='assets'&&window.imageAssetSession){const a=window.imageAssetSession;let p=document.getElementById('assetDebugPanel');if(!p){p=document.createElement('aside');p.id='assetDebugPanel';p.style.cssText='position:fixed;right:12px;top:12px;z-index:99999;background:#fff;color:#111;border:2px solid #ea580c;padding:12px;font:11px/1.4 monospace;max-width:420px';document.body.appendChild(p)}p.textContent=`ASSET DEBUG — status ${a.status} | QA ${a.visualQaStatus} | jobs ${a.jobs.length} | generated ${a.generatedAssets.length} | reused ${a.reusedAssets.length} | unresolved ${a.unresolvedRequirements.join(', ')||'none'} | estimated $${Number(a.cost.estimatedUsd).toFixed(4)} | actual $${Number(a.cost.actualUsd||0).toFixed(4)}`}
+      if(new URLSearchParams(window.location.search).get('debug')==='qa'&&window.postRenderReview){const q=window.postRenderReview,r=q.finalReview;let p=document.getElementById('qaDebugPanel');if(!p){p=document.createElement('aside');p.id='qaDebugPanel';p.style.cssText='position:fixed;left:12px;top:12px;z-index:99999;background:#fff;color:#111;border:2px solid #2563eb;padding:12px;font:11px/1.4 monospace;max-width:430px';document.body.appendChild(p)}p.textContent=`PIXEL QA — ${q.outcome} | approved ${q.visualApproved} | local ${q.localAudit.passed} | score ${r?.overallScore??'local'} | issues ${(r?.issues??[]).map(i=>`${i.severity}:${i.owner}:${i.targetRef}`).join(', ')||'none'} | canonical ${q.qaPlan.compositeTarget?.context?.canonicalSvgChecksum??'stable'} | raster ${q.qaPlan.compositeTarget?.checksum??'none'} | cost $${Number(q.cost).toFixed(4)}`}
       if(new URLSearchParams(window.location.search).get('debug')==='critic'&&window.artDirectorReview){const r=window.artDirectorReview,c=r.critique,counts=(c?.issues??[]).reduce((a,i)=>(a[i.severity]=(a[i.severity]||0)+1,a),{});let p=document.getElementById('criticDebugPanel');if(!p){p=document.createElement('aside');p.id='criticDebugPanel';p.style.cssText='position:fixed;left:12px;bottom:12px;z-index:99999;background:#fff;color:#111;border:2px solid #8b5cf6;padding:12px;font:11px/1.4 monospace;max-width:390px';document.body.appendChild(p)}p.textContent=`CRITIC DIAGNOSTIC — status ${r.outcome} | ready ${r.readyForRender} | local ${r.quality.localAuditScore.toFixed(1)} | Sol ${r.quality.criticScore.toFixed(1)} | agreement ${r.quality.agreementScore.toFixed(1)} | risk ${r.quality.unresolvedRisk.toFixed(3)} | verdict ${c?.verdict??'none'} | issues ${JSON.stringify(counts)} | scope ${c?.recommendedRevisionScope??'none'} | rounds ${r.revisionRounds.length} | original ${r.originalCreativeDirectionSessionId}/${r.originalLayoutSessionId} | final ${r.finalCreativeRoute?.id??'none'}/${r.finalLayoutPlan?.layoutId??'none'} | cost $${Number(r.cost||0).toFixed(4)}`}
       if (new URLSearchParams(window.location.search).get('debug') === 'layout' && window.layoutIntelligence?.layoutDocument?.frames?.[0]) {
         const plan = window.layoutIntelligence.layoutDocument.frames[0];
@@ -2130,6 +2134,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           reviewedDesignPackage:window.reviewedDesignPackage,
           renderSession:window.renderSession,
           imageAssetSession:window.imageAssetSession,
+          postRenderReview:window.postRenderReview,
           aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, brandAnalysisCost: window.brandSession?.aiUsage?.totalCostUsd || 0, creativeDirectionCost: window.creativeDirection?.cost || 0, designSpecCost: payload.stageCostUsd || 0, projectTotalAiCost: payload.aiUsage?.totalCostUsd || 0}
         }
       };
@@ -2458,6 +2463,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.reviewedDesignPackage = state.reviewedDesignPackage || null;
     window.renderSession = state.renderSession || null;
     window.imageAssetSession = state.imageAssetSession || null;
+    window.postRenderReview = state.postRenderReview || null;
     if (window.referenceSession) window.showForensicsDiagnostics(window.referenceSession);
     if (window.creativeDirection) window.showCreativeDiagnostics(window.creativeDirection);
 

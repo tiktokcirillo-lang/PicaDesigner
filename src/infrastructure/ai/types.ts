@@ -3,13 +3,13 @@ import type {AnalysisDepth, AnalyticalPassId, VisualInput} from '../../domain/vi
 export type AIProviderId = 'openai' | 'mock';
 export type AIModelRole = 'forensics' | 'critic';
 export type AIApplicationTask = 'refine_copy' | 'generate_design_spec' | 'creative_direction';
-export type AIStage = 'visual_forensics' | 'brand_intelligence' | 'creative_direction' | 'art_direction_revision' | 'design_spec' | 'senior_critic' | 'image_generation' | 'layout_intelligence' | 'other';
+export type AIStage = 'visual_forensics' | 'brand_intelligence' | 'creative_direction' | 'art_direction_revision' | 'design_spec' | 'senior_critic' | 'image_generation' | 'image_regeneration' | 'post_render_qa' | 'layout_intelligence' | 'other';
 export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
 export interface AIUsage {inputTokens: number; cachedInputTokens: number; cacheWriteTokens: number; outputTokens: number; reasoningTokens?: number}
 export interface AIStructuredRequest {
   projectId: string;
-  pass: AnalyticalPassId | 'sol_critic' | 'creative_direction_revision' | 'repair' | 'image_generation' | AIApplicationTask;
+  pass: AnalyticalPassId | 'sol_critic' | 'creative_direction_revision' | 'repair' | 'image_generation' | 'post_render_qa' | AIApplicationTask;
   model: string;
   instructions: string;
   inputText: string;
