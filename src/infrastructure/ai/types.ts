@@ -9,7 +9,7 @@ export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'ma
 export interface AIUsage {inputTokens: number; cachedInputTokens: number; cacheWriteTokens: number; outputTokens: number; reasoningTokens?: number}
 export interface AIStructuredRequest {
   projectId: string;
-  pass: AnalyticalPassId | 'sol_critic' | 'creative_direction_revision' | 'repair' | AIApplicationTask;
+  pass: AnalyticalPassId | 'sol_critic' | 'creative_direction_revision' | 'repair' | 'image_generation' | AIApplicationTask;
   model: string;
   instructions: string;
   inputText: string;

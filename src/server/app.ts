@@ -7,6 +7,7 @@ import {applicationBudgetStore} from '../infrastructure/ai/budget/runtime-store.
 import {createLayoutRouter} from './api/layout.js';
 import {createArtDirectorReviewRouter} from './api/art-director-review.js';
 import {createRenderRouter} from './api/render.js';
+import {createImageAssetsRouter} from './api/image-assets.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -19,6 +20,7 @@ export const createServerApp = () => {
   app.use('/api/layout', createLayoutRouter());
   app.use('/api/art-director',createArtDirectorReviewRouter());
   app.use('/api/render',createRenderRouter());
+  app.use('/api/assets',createImageAssetsRouter());
   app.use('/api/ai', createLegacyAIRouter());
   return app;
 };

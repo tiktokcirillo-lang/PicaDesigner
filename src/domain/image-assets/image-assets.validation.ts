@@ -1,0 +1,13 @@
+import {strict as assert} from 'node:assert';
+import {buildImagePromptPlan,buildProviderPrompt,canGenerateRequirement,classifyRequirements,detectImageMediaType,resolveImageSize,validateGeneratedImage} from './index.js';
+import {MockImageGenerationProvider} from '../../infrastructure/image-generation/index.js';
+import type {AssetRequirement} from '../render-engine/index.js';
+const requirement:AssetRequirement={id:'requirement_hero',role:'photography',required:true,targetRect:{x:0,y:0,width:1080,height:1350},desiredType:'raster',sourcePreference:['user_upload','generated'],visualIntent:'abstract premium product atmosphere',focalAnchor:'center',contentPolicy:{no_text:true,no_logo:true,no_brand_marks:true,no_ui_text:true,no_watermark:true},status:'missing'};
+assert(canGenerateRequirement(requirement));assert(!canGenerateRequirement({...requirement,role:'official_logo'}));
+assert.equal(classifyRequirements([requirement],{projectId:'p',assets:[]}).generatable.length,1);
+assert.equal(classifyRequirements([requirement],{projectId:'p',assets:[{id:'upload',source:'user_upload',type:'raster',mediaType:'image/png',fingerprint:'f',status:'available',provenance:['photography']}]}).reusable.length,1);
+const plan=buildImagePromptPlan(requirement);assert.equal(plan.referenceImagePolicy,'none');assert(plan.forbiddenContent.includes('logos'));assert(!buildProviderPrompt(plan).includes('creative suggestions'));
+const mock=new MockImageGenerationProvider(),size=resolveImageSize(requirement.targetRect,mock.capabilities());assert.equal(size.width%16,0);assert.equal(size.height%16,0);
+const job={jobId:'j',projectId:'p',requirementId:requirement.id,fingerprint:'f',model:'mock-image',quality:'standard' as const,size:{width:size.width,height:size.height},outputFormat:'png' as const,promptPlan:plan};
+const result=await mock.generate(job);assert.equal(detectImageMediaType(result.bytes),'image/png');validateGeneratedImage(result,20);assert.throws(()=>validateGeneratedImage({...result,bytes:new Uint8Array([1,2,3])},20));assert.equal(mock.estimateCost(),.01);
+console.log('Image Asset validation passed: policy, reuse, prompt firewall, sizing, mock provider and binary validation.');

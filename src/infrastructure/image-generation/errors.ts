@@ -1,0 +1,1 @@
+export class ImageGenerationError extends Error{}export class ImagePricingUnavailableError extends ImageGenerationError{}export class ImageGenerationBudgetError extends ImageGenerationError{}export class ImageGenerationValidationError extends ImageGenerationError{}

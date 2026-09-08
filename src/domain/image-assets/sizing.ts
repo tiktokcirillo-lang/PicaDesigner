@@ -1,0 +1,4 @@
+import type {ImageProviderCapabilities,ImageAssetQuality} from './types.js';
+const round=(n:number,m:number)=>Math.max(m,Math.round(n/m)*m);
+export const resolveImageSize=(target:{width:number;height:number},c:ImageProviderCapabilities)=>{const ratio=target.width/target.height,clamped=Math.min(c.maxAspectRatio,Math.max(c.minAspectRatio,ratio));let w=target.width,h=w/clamped;if(w>c.maxEdge){w=c.maxEdge;h=w/clamped}if(h>c.maxEdge){h=c.maxEdge;w=h*clamped}w=Math.min(c.maxEdge,Math.max(c.minEdge,round(w,c.edgeMultiple)));h=Math.min(c.maxEdge,Math.max(c.minEdge,round(h,c.edgeMultiple)));return{width:w,height:h,cropLoss:Math.abs(ratio-w/h)/ratio}};
+export const resolveImageQuality=(requested:ImageAssetQuality,supported:ImageAssetQuality[])=>supported.includes(requested)?requested:supported.includes('standard')?'standard':supported[0];

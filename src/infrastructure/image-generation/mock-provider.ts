@@ -1,0 +1,3 @@
+import type {ImageGenerationJob,ImageGenerationProvider} from '../../domain/image-assets/index.js';
+const PNG=Uint8Array.from([137,80,78,71,13,10,26,10,0,0,0,13]);
+export class MockImageGenerationProvider implements ImageGenerationProvider{readonly id='mock';capabilities(){return{models:['mock-image'],formats:['png' as const],qualities:['draft' as const,'standard' as const,'final' as const],transparentBackground:true,arbitrarySize:true,minEdge:16,maxEdge:3840,edgeMultiple:16,minAspectRatio:1/3,maxAspectRatio:3}}estimateCost(){return .01}async generate(j:ImageGenerationJob){return{bytes:PNG,mediaType:'image/png' as const,width:j.size.width,height:j.size.height,model:j.model,requestId:`mock_${j.fingerprint.slice(0,12)}`,durationMs:1,actualCostUsd:.01}}}

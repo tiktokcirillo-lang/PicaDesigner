@@ -1,0 +1,5 @@
+import type {AssetRequirement,ProjectAssetRegistry} from '../render-engine/index.js';
+const NEVER_GENERATE=new Set<AssetRequirement['role']>(['official_logo','uploaded_product','uploaded_photo']);
+export const findReusableAsset=(r:AssetRequirement,registry:ProjectAssetRegistry)=>registry.assets.find(a=>a.status==='available'&&r.sourcePreference.includes(a.source)&&a.provenance.includes(r.role));
+export const canGenerateRequirement=(r:AssetRequirement)=>r.status==='missing'&&!NEVER_GENERATE.has(r.role)&&r.sourcePreference.includes('generated')&&r.contentPolicy.no_text&&r.contentPolicy.no_logo&&r.contentPolicy.no_brand_marks;
+export const classifyRequirements=(requirements:AssetRequirement[],registry:ProjectAssetRegistry)=>({reusable:requirements.map(r=>({r,a:findReusableAsset(r,registry)})).filter(x=>x.a),generatable:requirements.filter(r=>!findReusableAsset(r,registry)&&canGenerateRequirement(r)),unresolved:requirements.filter(r=>!findReusableAsset(r,registry)&&!canGenerateRequirement(r))});
