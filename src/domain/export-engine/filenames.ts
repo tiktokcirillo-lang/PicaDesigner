@@ -1,0 +1,5 @@
+import type {ExportFormat} from './types.js';
+const RESERVED=/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i;
+export const sanitizeFilenamePart=(value:string):string=>{const safe=value.normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/[\\/\0-\x1f\x7f:*?"<>|.]+/g,'-').replace(/[^a-zA-Z0-9_-]+/g,'-').replace(/-+/g,'-').replace(/^[-_.]+|[-_.]+$/g,'').toLowerCase().slice(0,80);return !safe||RESERVED.test(safe)?'project':safe};
+export const buildProductionFilename=(input:{projectSlug:string;placement:string;width?:number;height?:number;format:Exclude<ExportFormat,'zip'>;index?:number;total?:number})=>{const index=input.total&&input.total>1?`_slide-${String((input.index??0)+1).padStart(2,'0')}`:'',dimensions=input.width&&input.height?`_${input.width}x${input.height}`:'';return`${sanitizeFilenamePart(input.projectSlug)}_${sanitizeFilenamePart(input.placement)}${index}${dimensions}.${input.format}`};
+export const assertSafeArchivePath=(path:string)=>{if(!path||path.includes('..')||path.includes('\\')||path.startsWith('/')||path.includes('\0'))throw new Error('Unsafe archive path.');return path};

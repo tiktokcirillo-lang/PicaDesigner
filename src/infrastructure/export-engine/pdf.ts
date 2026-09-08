@@ -1,0 +1,3 @@
+import {PDFDocument} from 'pdf-lib';
+export const buildProofPdf=async(pages:Array<{png:Uint8Array;width:number;height:number}>)=>{const document=await PDFDocument.create();for(const source of pages){const page=document.addPage([source.width,source.height]),image=await document.embedPng(source.png);page.drawImage(image,{x:0,y:0,width:source.width,height:source.height})}return new Uint8Array(await document.save({useObjectStreams:false,addDefaultPage:false}))};
+export const inspectPdf=async(bytes:Uint8Array)=>{const document=await PDFDocument.load(bytes);return{pageCount:document.getPageCount(),ratios:document.getPages().map(page=>page.getWidth()/page.getHeight())}};

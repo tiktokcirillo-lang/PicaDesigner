@@ -10,6 +10,8 @@ import {createRenderRouter} from './api/render.js';
 import {createImageAssetsRouter} from './api/image-assets.js';
 import {applicationGeneratedAssetStore} from '../infrastructure/image-generation/index.js';
 import {createVisualQaRouter} from './api/visual-qa.js';
+import {createExportsRouter} from './api/exports.js';
+import {applicationProductionArtifactStore} from '../infrastructure/export-engine/index.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -18,6 +20,7 @@ export const createServerApp = () => {
   app.get('/api/health', (_request, response) => response.json({status: 'ok', service: 'picadesigner-api'}));
   app.get('/api/health/ai-budget',async(_request,response)=>response.json(await applicationBudgetStore.health()));
   app.get('/api/health/asset-store',async(_request,response)=>response.json(await applicationGeneratedAssetStore.health()));
+  app.get('/api/health/export-store',async(_request,response)=>response.json(await applicationProductionArtifactStore.health()));
   app.use('/api/visual-forensics', createVisualForensicsRouter());
   app.use('/api/creative-direction', createCreativeDirectionRouter());
   app.use('/api/layout', createLayoutRouter());
@@ -25,6 +28,7 @@ export const createServerApp = () => {
   app.use('/api/render',createRenderRouter());
   app.use('/api/assets',createImageAssetsRouter());
   app.use('/api/visual-qa',createVisualQaRouter());
+  app.use('/api/exports',createExportsRouter());
   app.use('/api/ai', createLegacyAIRouter());
   return app;
 };

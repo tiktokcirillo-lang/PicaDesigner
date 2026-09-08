@@ -15,6 +15,7 @@
     "layout:validation": "tsx src/domain/layout-engine/format-registry.validation.ts && tsx src/domain/layout-engine/layout-engine.validation.ts && tsx scripts/ui-format-validation.ts",
     "critic:validation": "tsx src/domain/art-director-review/art-director-review.validation.ts",
     "render:validation": "tsx src/domain/render-engine/render-engine.validation.ts",
+    "export:validation": "tsx src/domain/export-engine/export-engine.validation.ts",
     "image:validation": "tsx src/domain/image-assets/image-assets.validation.ts",
     "asset-storage:validation": "tsx src/infrastructure/image-generation/asset-storage.validation.ts",
     "visual-qa:validation": "tsx src/domain/post-render-review/post-render-review.validation.ts && tsx src/infrastructure/post-render-review/multimodal.validation.ts",
@@ -32,11 +33,14 @@
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
+    "fflate": "^0.8.3",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "openai": "^7.10.0",
+    "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "^0.35.4",
     "vite": "^6.2.0"
   },
   "devDependencies": {

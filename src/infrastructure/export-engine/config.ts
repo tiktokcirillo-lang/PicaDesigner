@@ -1,0 +1,3 @@
+import {EXPORT_MAX_PACKAGE_MB,EXPORT_MAX_SINGLE_FILE_MB,EXPORT_WEBP_QUALITY} from '../../domain/export-engine/index.js';
+const positive=(value:string|undefined,fallback:number)=>{const parsed=Number(value);return Number.isFinite(parsed)&&parsed>0?parsed:fallback};
+export const loadExportConfig=(env:NodeJS.ProcessEnv=process.env)=>({webpQuality:Math.min(100,positive(env.EXPORT_WEBP_QUALITY,EXPORT_WEBP_QUALITY)),maxSingleFileMb:positive(env.EXPORT_MAX_SINGLE_FILE_MB,EXPORT_MAX_SINGLE_FILE_MB),maxPackageMb:positive(env.EXPORT_MAX_PACKAGE_MB,EXPORT_MAX_PACKAGE_MB),readHandleTtlSeconds:positive(env.EXPORT_READ_HANDLE_TTL_SECONDS,300)});

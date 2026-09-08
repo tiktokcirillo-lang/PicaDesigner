@@ -1347,6 +1347,12 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
               <a onclick="window.printPdf()">PDF (.pdf)</a>
             </div>
           </div>
+          <div id="productionExports" style="display:flex;gap:6px">
+            <button class="copy-all-btn" data-production-format="png" disabled>Baixar PNG</button>
+            <button class="copy-all-btn" data-production-format="webp" disabled>Baixar WebP</button>
+            <button class="copy-all-btn" data-production-format="pdf" disabled>Baixar PDF</button>
+            <button class="copy-all-btn" data-production-format="zip" disabled>Baixar ZIP</button>
+          </div>
         </div>
       </div>
       <div id="outputSections"></div>
@@ -1373,6 +1379,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   import {ensureRenderSession} from '/src/client/render-session.ts';
   import {ensureImageAssets} from '/src/client/image-assets.ts';
   import {ensurePostRenderReview} from '/src/client/post-render-review.ts';
+  import {createProductionExport, getProductionDownload} from '/src/client/production-export.ts';
   import {createBrandIntelligenceSession} from '/src/domain/brand-intelligence/index.ts';
 
   const DB_NAME = 'AriaDB';
@@ -1451,6 +1458,7 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.renderSession = null;
   window.imageAssetSession = null;
   window.postRenderReview = null;
+  window.productionExportSession = null;
   window.activeProjectId = crypto.randomUUID();
   window.referenceAnalysisDepth = 'standard';
 
@@ -2060,6 +2068,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       window.renderSession=await ensureRenderSession({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,assetRegistry:{projectId:window.activeProjectId,assets:[]},destinationTool:tool,existingSession:window.renderSession,fontAvailability:['Arial','Helvetica','sans-serif']});
       if(window.renderSession.readiness.missingRequiredAssets.length){window.imageAssetSession=await ensureImageAssets({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,renderSession:window.renderSession,assetRegistry:{projectId:window.activeProjectId,assets:window.imageAssetSession?.registry?.assets??[]},quality:'standard',fontAvailability:['Arial','Helvetica','sans-serif']});window.renderSession=window.imageAssetSession.renderSession}
       window.postRenderReview=await ensurePostRenderReview({projectId:window.activeProjectId,reviewedDesignPackage:window.reviewedDesignPackage,renderSession:window.renderSession,imageAssetSession:window.imageAssetSession,assetRegistry:window.imageAssetSession?.registry??{projectId:window.activeProjectId,assets:[]},existingSession:window.postRenderReview});if(window.imageAssetSession?.generatedAssets?.length&&!window.postRenderReview.visualApproved)throw new Error('A revisão visual dos pixels não aprovou a peça para produção.');
+      window.updateProductionExportState();
       const response = await fetch('/api/ai/generate-design-spec', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -2135,6 +2144,7 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           renderSession:window.renderSession,
           imageAssetSession:window.imageAssetSession,
           postRenderReview:window.postRenderReview,
+          productionExportSession:window.productionExportSession,
           aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, brandAnalysisCost: window.brandSession?.aiUsage?.totalCostUsd || 0, creativeDirectionCost: window.creativeDirection?.cost || 0, designSpecCost: payload.stageCostUsd || 0, projectTotalAiCost: payload.aiUsage?.totalCostUsd || 0}
         }
       };
@@ -2464,6 +2474,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.renderSession = state.renderSession || null;
     window.imageAssetSession = state.imageAssetSession || null;
     window.postRenderReview = state.postRenderReview || null;
+    window.productionExportSession = state.productionExportSession || null;
+    window.updateProductionExportState();
     if (window.referenceSession) window.showForensicsDiagnostics(window.referenceSession);
     if (window.creativeDirection) window.showCreativeDiagnostics(window.creativeDirection);
 
@@ -2647,6 +2659,30 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       bar.appendChild(wrapper);
     });
   }
+
+  window.updateProductionExportState = function() {
+    const approved = Boolean(window.postRenderReview?.visualApproved && window.postRenderReview?.approvedPackage);
+    document.querySelectorAll('[data-production-format]').forEach(button => { button.disabled = !approved; });
+  };
+
+  window.downloadProductionFormat = async function(format, button) {
+    if (!window.postRenderReview?.visualApproved || !window.postRenderReview?.approvedPackage) return;
+    const original = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Preparando arquivo...';
+    try {
+      const requested = format === 'zip' ? ['png', 'webp', 'pdf', 'zip'] : [format];
+      window.productionExportSession = await createProductionExport({projectId: window.activeProjectId, visualApprovedPackage: window.postRenderReview.approvedPackage, formats: requested, profile: format === 'zip' ? 'campaign_package' : format === 'pdf' ? 'client_proof_pdf' : format === 'webp' ? 'social_webp' : 'social_png', includeManifest: format === 'zip', includeZip: format === 'zip', existingSession: window.productionExportSession});
+      const artifact = format === 'zip' ? window.productionExportSession.packageArtifact : window.productionExportSession.artifacts.find(item => item.format === format);
+      if (!artifact) throw new Error('Arquivo final não foi produzido.');
+      const handle = await getProductionDownload({projectId: window.activeProjectId, exportSessionId: window.productionExportSession.sessionId, artifactId: artifact.artifactId});
+      const anchor = document.createElement('a'); anchor.href = handle.url; anchor.download = handle.filename || artifact.filename; document.body.appendChild(anchor); anchor.click(); anchor.remove();
+      button.textContent = 'Pronto para download';
+      if (new URLSearchParams(window.location.search).get('debug') === 'export') { let panel = document.getElementById('exportDebugPanel'); if (!panel) { panel = document.createElement('aside'); panel.id = 'exportDebugPanel'; panel.style.cssText = 'position:fixed;right:12px;top:12px;z-index:99999;background:#fff;color:#111;border:2px solid #0f766e;padding:12px;font:11px/1.4 monospace;max-width:430px'; document.body.appendChild(panel); } panel.textContent = `EXPORT — ${window.productionExportSession.status} | artifacts ${window.productionExportSession.artifacts.map(item => `${item.format}:${item.width || '-'}x${item.height || '-'}:${item.checksum.slice(0,10)}`).join(', ')} | cache ${window.productionExportSession.cacheHit} | storage ${window.productionExportSession.storageKind} | AI $${window.productionExportSession.cost.aiUsd}`; }
+    } catch (error) { button.textContent = 'Falha ao preparar arquivo'; console.error('Production export failed.'); }
+    finally { setTimeout(() => { button.textContent = original; window.updateProductionExportState(); }, 1800); }
+  };
+  document.querySelectorAll('[data-production-format]').forEach(button => button.addEventListener('click', () => window.downloadProductionFormat(button.dataset.productionFormat, button)));
 
   window.copyOutput = function() {
     if (!window.currentOutput) return;
