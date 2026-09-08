@@ -18,6 +18,7 @@
     "image:validation": "tsx src/domain/image-assets/image-assets.validation.ts",
     "asset-storage:validation": "tsx src/infrastructure/image-generation/asset-storage.validation.ts",
     "visual-qa:validation": "tsx src/domain/post-render-review/post-render-review.validation.ts",
+    "regeneration:validation": "tsx src/application/post-render-review/regeneration.validation.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

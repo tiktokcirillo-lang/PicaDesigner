@@ -13,6 +13,7 @@ export * from './providers/errors.js';
 export * from './providers/image-generation.js';
 export * from './providers/mock.js';
 export * from './providers/openai/config.js';
+export * from './providers/openai/client.js';
 export * from './providers/openai/extractor.js';
 export * from './providers/openai/pass-schemas.js';
 export * from './providers/openai/responses.js';

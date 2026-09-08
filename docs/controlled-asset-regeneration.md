@@ -1,3 +1,3 @@
 # Controlled asset regeneration
 
-Only blocker/major issues owned by `asset_generation` qualify. A correction starts from the original requirement/prompt plan and may add only bounded fixes; layout, copy, CTA, logo, colors, format and concept remain immutable. One round is the default. Regeneration must reserve final QA budget and prefer source-based editing when identity preservation matters.
+Only blocker/major issues owned by `asset_generation` qualify. The operational server loop maps diagnoses to a closed correction allowlist, rebuilds the original prompt plan, prefers source editing when identity matters, reserves regeneration plus final verification, settles provider billing before validation/storage, appends an immutable replacement asset, deterministically re-renders and performs compact pixel verification. Layout, copy, CTA, logo, colors, format and concept remain immutable. The configured maximum—one round by default—is enforced by the orchestrator.
