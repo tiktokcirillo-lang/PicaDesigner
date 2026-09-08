@@ -8,6 +8,7 @@ import {createLayoutRouter} from './api/layout.js';
 import {createArtDirectorReviewRouter} from './api/art-director-review.js';
 import {createRenderRouter} from './api/render.js';
 import {createImageAssetsRouter} from './api/image-assets.js';
+import {applicationGeneratedAssetStore} from '../infrastructure/image-generation/index.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -15,6 +16,7 @@ export const createServerApp = () => {
   app.use(express.json({limit: `${config.maxImageMb + 1}mb`}));
   app.get('/api/health', (_request, response) => response.json({status: 'ok', service: 'picadesigner-api'}));
   app.get('/api/health/ai-budget',async(_request,response)=>response.json(await applicationBudgetStore.health()));
+  app.get('/api/health/asset-store',async(_request,response)=>response.json(await applicationGeneratedAssetStore.health()));
   app.use('/api/visual-forensics', createVisualForensicsRouter());
   app.use('/api/creative-direction', createCreativeDirectionRouter());
   app.use('/api/layout', createLayoutRouter());

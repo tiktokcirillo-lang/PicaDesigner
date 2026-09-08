@@ -5,6 +5,7 @@ export const AI_DEFAULTS = {
   budgetReservationTtlSeconds: 600, budgetReservationSafetyFactor: 1.20, allowInMemoryBudget: false,
   artDirectorMaxRevisionRounds:1,seniorCriticTargetUsd:.10,seniorCriticMaxUsd:.18,artDirectionRevisionTargetUsd:.06,artDirectionRevisionMaxUsd:.10,
   imageModel:'gpt-image-2',imageGenerationTargetUsd:.22,imageGenerationMaxUsd:.35,imageRequestTimeoutMs:180_000,imageMaxRetries:1,generatedImageMaxMb:20,
+  assetSignedUrlTtlSeconds:300,assetStorageMaxRetries:1,
 } as const;
 
 export interface OpenAIConfig {
@@ -13,6 +14,7 @@ export interface OpenAIConfig {
   solEscalationEnabled: boolean; budgetReservationTtlSeconds:number; budgetReservationSafetyFactor:number; allowInMemoryBudget:boolean;
   artDirectorMaxRevisionRounds:number;seniorCriticTargetUsd:number;seniorCriticMaxUsd:number;artDirectionRevisionTargetUsd:number;artDirectionRevisionMaxUsd:number;
   imageModel:string;imageGenerationTargetUsd:number;imageGenerationMaxUsd:number;imageRequestTimeoutMs:number;imageMaxRetries:number;generatedImageMaxMb:number;imageEstimatedCostUsd?:number;
+  assetSignedUrlTtlSeconds:number;assetStorageMaxRetries:number;
 }
 const positiveNumber = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -38,4 +40,5 @@ export const loadOpenAIConfig = (env: NodeJS.ProcessEnv = process.env): OpenAICo
   allowInMemoryBudget: (env.AI_ALLOW_INMEMORY_BUDGET ?? 'false').toLowerCase() === 'true',
   artDirectorMaxRevisionRounds:nonNegativeInteger(env.AI_ART_DIRECTOR_MAX_REVISION_ROUNDS,AI_DEFAULTS.artDirectorMaxRevisionRounds),seniorCriticTargetUsd:positiveNumber(env.AI_SENIOR_CRITIC_TARGET_USD,AI_DEFAULTS.seniorCriticTargetUsd),seniorCriticMaxUsd:positiveNumber(env.AI_SENIOR_CRITIC_MAX_USD,AI_DEFAULTS.seniorCriticMaxUsd),artDirectionRevisionTargetUsd:positiveNumber(env.AI_ART_DIRECTION_REVISION_TARGET_USD,AI_DEFAULTS.artDirectionRevisionTargetUsd),artDirectionRevisionMaxUsd:positiveNumber(env.AI_ART_DIRECTION_REVISION_MAX_USD,AI_DEFAULTS.artDirectionRevisionMaxUsd),
   imageModel:env.OPENAI_IMAGE_MODEL?.trim()||AI_DEFAULTS.imageModel,imageGenerationTargetUsd:positiveNumber(env.AI_IMAGE_GENERATION_TARGET_USD,AI_DEFAULTS.imageGenerationTargetUsd),imageGenerationMaxUsd:positiveNumber(env.AI_IMAGE_GENERATION_MAX_USD,AI_DEFAULTS.imageGenerationMaxUsd),imageRequestTimeoutMs:positiveNumber(env.AI_IMAGE_REQUEST_TIMEOUT_MS,AI_DEFAULTS.imageRequestTimeoutMs),imageMaxRetries:nonNegativeInteger(env.AI_IMAGE_MAX_RETRIES,AI_DEFAULTS.imageMaxRetries),generatedImageMaxMb:positiveNumber(env.AI_GENERATED_IMAGE_MAX_MB,AI_DEFAULTS.generatedImageMaxMb),imageEstimatedCostUsd:env.AI_IMAGE_ESTIMATED_COST_USD?positiveNumber(env.AI_IMAGE_ESTIMATED_COST_USD,0):undefined,
+  assetSignedUrlTtlSeconds:positiveNumber(env.ASSET_SIGNED_URL_TTL_SECONDS,300),assetStorageMaxRetries:nonNegativeInteger(env.ASSET_STORAGE_MAX_RETRIES,1),
 });

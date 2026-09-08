@@ -1,0 +1,2 @@
+import type {GeneratedAssetStore,GeneratedImageAsset} from './types.js';
+export const reconcileGeneratedAssetBacking=async(asset:GeneratedImageAsset,projectId:string,store:GeneratedAssetStore)=>{if(asset.status!=='available'||!asset.backingRef)return{status:'backing_missing' as const};try{return await store.exists(asset.backingRef,projectId)?{status:'available' as const}:{status:'backing_missing' as const}}catch{return{status:'backing_missing' as const}}};
