@@ -17,7 +17,10 @@ import {
 } from "../../domain/project-persistence/index.js";
 export interface MockDurableDatabase {
   projects: Record<string, DurableProjectRecord>;
-  versions:Record<string,{projectId:string;versionId:string;revision:number;status:'active'}>;
+  versions: Record<
+    string,
+    { projectId: string; versionId: string; revision: number; status: "active" }
+  >;
   checkpoints: WorkflowCheckpoint[];
   authorities: ProductionAuthorityRecord[];
   exports: DurableExportSessionRecord[];
@@ -25,7 +28,7 @@ export interface MockDurableDatabase {
 }
 export const createMockDurableDatabase = (): MockDurableDatabase => ({
   projects: {},
-  versions:{},
+  versions: {},
   checkpoints: [],
   authorities: [],
   exports: [],
@@ -57,7 +60,11 @@ export class MockDurableProjectRepository implements ProjectPersistenceRepositor
         "Durable project database is unavailable.",
       );
   }
-  async createProject(input: { projectId?: string; operationId: string }) {
+  async createProject(input: {
+    projectId?: string;
+    name?: string;
+    operationId: string;
+  }) {
     this.ready();
     const existing = Object.values(this.db.projects).find(
       (project) => project.projectId === input.projectId,
@@ -67,6 +74,7 @@ export class MockDurableProjectRepository implements ProjectPersistenceRepositor
       projectId = input.projectId ?? `project_${randomUUID()}`,
       record: DurableProjectRecord = {
         projectId,
+        name: input.name?.trim() || "Untitled Project",
         schemaVersion: PROJECT_PERSISTENCE_SCHEMA_VERSION,
         createdAt: now,
         updatedAt: now,
@@ -75,6 +83,30 @@ export class MockDurableProjectRepository implements ProjectPersistenceRepositor
       };
     this.db.projects[projectId] = record;
     return clone(record);
+  }
+  async updateProject(input: {
+    projectId: string;
+    expectedRevision: number;
+    name?: string;
+    status?: "active" | "archived";
+  }) {
+    this.ready();
+    const current = this.db.projects[input.projectId];
+    if (!current) throw new Error("Project not found.");
+    if (current.revision !== input.expectedRevision)
+      throw new OptimisticConcurrencyError();
+    const updated = {
+      ...current,
+      name:
+        input.name === undefined
+          ? current.name
+          : input.name.trim() || "Untitled Project",
+      status: input.status ?? current.status,
+      revision: current.revision + 1,
+      updatedAt: new Date().toISOString(),
+    };
+    this.db.projects[input.projectId] = updated;
+    return clone(updated);
   }
   async getProject(projectId: string) {
     this.ready();
@@ -116,7 +148,12 @@ export class MockDurableProjectRepository implements ProjectPersistenceRepositor
         createdAt: now,
       };
     this.db.checkpoints.push(checkpoint);
-    this.db.versions[`${input.projectId}:${input.versionId}`]={projectId:input.projectId,versionId:input.versionId,revision,status:'active'};
+    this.db.versions[`${input.projectId}:${input.versionId}`] = {
+      projectId: input.projectId,
+      versionId: input.versionId,
+      revision,
+      status: "active",
+    };
     this.db.projects[input.projectId] = {
       ...project,
       revision,
@@ -272,6 +309,23 @@ export class MockDurableProjectRepository implements ProjectPersistenceRepositor
         artifacts: session.artifacts,
       })),
     };
+  }
+  async getProjectHistory(projectId: string) {
+    const checkpoints = this.db.checkpoints
+      .filter((x) => x.projectId === projectId)
+      .sort((a, b) => b.revision - a.revision);
+    const authorities = this.db.authorities
+      .filter((x) => x.projectId === projectId)
+      .map(
+        ({ visualApprovedPackage: _, postRenderReview: __, ...safe }) => safe,
+      );
+    const exports = this.db.exports
+      .filter((x) => x.projectId === projectId)
+      .map(({ session, ...record }) => ({
+        ...record,
+        artifacts: session.artifacts,
+      }));
+    return clone({ checkpoints, authorities, exports });
   }
   async health() {
     return {

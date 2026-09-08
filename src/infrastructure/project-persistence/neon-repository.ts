@@ -18,6 +18,7 @@ const json = <T>(value: unknown) =>
   typeof value === "string" ? (JSON.parse(value) as T) : (value as T);
 const project = (r: Row): DurableProjectRecord => ({
   projectId: String(r.project_id),
+  name: String(r.name ?? "Untitled Project"),
   schemaVersion: PROJECT_PERSISTENCE_SCHEMA_VERSION,
   createdAt: new Date(String(r.created_at)).toISOString(),
   updatedAt: new Date(String(r.updated_at)).toISOString(),
@@ -39,12 +40,43 @@ export class NeonProjectPersistenceRepository implements ProjectPersistenceRepos
       );
     this.sql = neon(databaseUrl);
   }
-  async createProject(input: { projectId?: string; operationId: string }) {
+  async createProject(input: {
+    projectId?: string;
+    name?: string;
+    operationId: string;
+  }) {
     const id = input.projectId ?? `project_${crypto.randomUUID()}`,
       rows = await this.sql.query(
-        "INSERT INTO projects(project_id,schema_version,created_at,updated_at,status,revision) VALUES($1,$2,now(),now(),'active',1) ON CONFLICT(project_id) DO UPDATE SET project_id=EXCLUDED.project_id RETURNING *",
-        [id, PROJECT_PERSISTENCE_SCHEMA_VERSION],
+        "INSERT INTO projects(project_id,schema_version,name,created_at,updated_at,status,revision) VALUES($1,$2,$3,now(),now(),'active',1) ON CONFLICT(project_id) DO UPDATE SET project_id=EXCLUDED.project_id RETURNING *",
+        [
+          id,
+          PROJECT_PERSISTENCE_SCHEMA_VERSION,
+          input.name?.trim() || "Untitled Project",
+        ],
       );
+    return project(rows[0] as Row);
+  }
+  async updateProject(input: {
+    projectId: string;
+    expectedRevision: number;
+    name?: string;
+    status?: "active" | "archived";
+  }) {
+    const fields: string[] = ["revision=revision+1", "updated_at=now()"],
+      values: unknown[] = [input.projectId, input.expectedRevision];
+    if (input.name !== undefined) {
+      fields.push(`name=$${values.length + 1}`);
+      values.push(input.name.trim() || "Untitled Project");
+    }
+    if (input.status !== undefined) {
+      fields.push(`status=$${values.length + 1}`);
+      values.push(input.status);
+    }
+    const rows = await this.sql.query(
+      `UPDATE projects SET ${fields.join(",")} WHERE project_id=$1 AND revision=$2 RETURNING *`,
+      values,
+    );
+    if (!rows[0]) throw new OptimisticConcurrencyError();
     return project(rows[0] as Row);
   }
   async getProject(id: string) {
@@ -246,6 +278,32 @@ export class NeonProjectPersistenceRepository implements ProjectPersistenceRepos
             safe)(authority)
         : undefined,
       activeAssetResolutions: authority?.activeAssetResolutions ?? [],
+      exports: exports.map(({ session, ...record }) => ({
+        ...record,
+        artifacts: session.artifacts,
+      })),
+    };
+  }
+  async getProjectHistory(projectId: string) {
+    const checkpoints = await this.sql.query(
+      "SELECT * FROM workflow_checkpoints WHERE project_id=$1 ORDER BY revision DESC",
+      [projectId],
+    );
+    const authorities = await this.sql.query(
+      "SELECT * FROM production_authorities WHERE project_id=$1 ORDER BY created_at DESC",
+      [projectId],
+    );
+    const exports = await this.listExportSessions(projectId);
+    return {
+      checkpoints: checkpoints.map((row) => this.checkpoint(row as Row)),
+      authorities: authorities.map((row) => {
+        const {
+          visualApprovedPackage: _,
+          postRenderReview: __,
+          ...safe
+        } = this.authority(row as Row);
+        return safe;
+      }),
       exports: exports.map(({ session, ...record }) => ({
         ...record,
         artifacts: session.artifacts,

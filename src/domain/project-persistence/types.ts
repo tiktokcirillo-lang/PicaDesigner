@@ -6,6 +6,9 @@ import type {
 } from "../post-render-review/index.js";
 export const PROJECT_PERSISTENCE_SCHEMA_VERSION = "1.0.0" as const;
 export type WorkflowStage =
+  | "workspace_input"
+  | "reference_intelligence"
+  | "brand_intelligence"
   | "creative_direction"
   | "layout"
   | "art_director_review"
@@ -14,6 +17,7 @@ export type WorkflowStage =
   | "post_render_review";
 export interface DurableProjectRecord {
   projectId: string;
+  name: string;
   schemaVersion: typeof PROJECT_PERSISTENCE_SCHEMA_VERSION;
   createdAt: string;
   updatedAt: string;
@@ -103,7 +107,14 @@ export interface SaveAuthorityInput {
 export interface ProjectPersistenceRepository {
   createProject(input: {
     projectId?: string;
+    name?: string;
     operationId: string;
+  }): Promise<DurableProjectRecord>;
+  updateProject(input: {
+    projectId: string;
+    expectedRevision: number;
+    name?: string;
+    status?: "active" | "archived";
   }): Promise<DurableProjectRecord>;
   getProject(projectId: string): Promise<DurableProjectRecord | undefined>;
   listProjects(): Promise<DurableProjectRecord[]>;
@@ -128,6 +139,22 @@ export interface ProjectPersistenceRepository {
   ): Promise<DurableExportSessionRecord | undefined>;
   listExportSessions(projectId: string): Promise<DurableExportSessionRecord[]>;
   getSafeProjectState(projectId: string): Promise<SafeProjectState | undefined>;
+  getProjectHistory(
+    projectId: string,
+  ): Promise<{
+    checkpoints: WorkflowCheckpoint[];
+    authorities: Array<
+      Omit<
+        ProductionAuthorityRecord,
+        "visualApprovedPackage" | "postRenderReview"
+      >
+    >;
+    exports: Array<
+      Omit<DurableExportSessionRecord, "session"> & {
+        artifacts: ProductionExportSession["artifacts"];
+      }
+    >;
+  }>;
   health(): Promise<{
     status: "ok" | "degraded";
     kind: "durable" | "memory" | "unavailable";

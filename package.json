@@ -18,6 +18,8 @@
     "export:validation": "tsx src/domain/export-engine/export-engine.validation.ts",
     "persistence:validation": "tsx src/infrastructure/project-persistence/persistence.validation.ts",
     "persistence:cold-start-validation": "tsx src/infrastructure/project-persistence/cold-start.validation.ts",
+    "workspace:validation": "tsx scripts/workspace-validation.ts",
+    "workspace:test": "vitest run --environment jsdom",
     "db:validate": "tsx scripts/db-validate.ts",
     "image:validation": "tsx src/domain/image-assets/image-assets.validation.ts",
     "asset-storage:validation": "tsx src/infrastructure/image-generation/asset-storage.validation.ts",
@@ -44,19 +46,24 @@
     "pdf-lib": "^1.17.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-router-dom": "^7.18.3",
     "sharp": "^0.35.4",
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/express": "^4.17.21",
     "@types/node": "^22.14.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "autoprefixer": "^10.4.21",
+    "jsdom": "^30.0.1",
     "prettier": "^3.9.6",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "vitest": "^5.0.0"
   }
 }

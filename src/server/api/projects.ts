@@ -14,13 +14,35 @@ export const createProjectsRouter = () => {
   const router = Router();
   router.post("/", async (req, res) => {
     try {
-      const { projectId, operationId } = req.body ?? {};
+      const { projectId, name, operationId } = req.body ?? {};
       return res.status(201).json(
         await applicationProjectRepository.createProject({
           projectId,
+          name: typeof name === "string" ? name.slice(0, 160) : undefined,
           operationId: String(operationId ?? `create:${projectId ?? "server"}`),
         }),
       );
+    } catch (error) {
+      const safe = safeError(error);
+      return res.status(safe.status).json({ error: safe.message });
+    }
+  });
+  router.patch("/:projectId", async (req, res) => {
+    try {
+      const { name, status, expectedRevision } = req.body ?? {};
+      if (
+        !Number.isInteger(expectedRevision) ||
+        (name === undefined && status === undefined) ||
+        !([undefined, "active", "archived"] as unknown[]).includes(status)
+      )
+        return res.status(400).json({ error: "Invalid project update." });
+      const project = await applicationProjectRepository.updateProject({
+        projectId: req.params.projectId,
+        expectedRevision,
+        name: typeof name === "string" ? name.slice(0, 160) : undefined,
+        status,
+      });
+      return res.json({ project });
     } catch (error) {
       const safe = safeError(error);
       return res.status(safe.status).json({ error: safe.message });
@@ -63,6 +85,22 @@ export const createProjectsRouter = () => {
       return res
         .status(503)
         .json({ error: "Project persistence unavailable." });
+    }
+  });
+  router.get("/:projectId/history", async (req, res) => {
+    try {
+      const project = await applicationProjectRepository.getProject(
+        req.params.projectId,
+      );
+      if (!project)
+        return res.status(404).json({ error: "Project not found." });
+      return res.json(
+        await applicationProjectRepository.getProjectHistory(
+          req.params.projectId,
+        ),
+      );
+    } catch {
+      return res.status(503).json({ error: "Project history unavailable." });
     }
   });
   router.post("/:projectId/checkpoints", async (req, res) => {
