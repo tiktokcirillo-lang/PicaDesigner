@@ -13,14 +13,16 @@ export interface AIStructuredRequest {
   model: string;
   instructions: string;
   inputText: string;
+  /** @deprecated Prefer images for all new multimodal callers. */
   image?: VisualInput;
+  images?: VisualInput[];
   schemaName: string;
   jsonSchema: Record<string, unknown>;
   reasoningEffort: ReasoningEffort;
   maxOutputTokens: number;
   repairAttempt?: boolean;
 }
-export interface AIStructuredResponse<T> {requestId: string; model: string; data: T; usage: AIUsage; durationMs: number}
+export interface AIStructuredResponse<T> {requestId: string; model: string; data: T; usage: AIUsage; durationMs: number; imageInputCount?:number}
 export interface AIProvider {readonly id: AIProviderId; generateStructured<T>(request: AIStructuredRequest): Promise<AIStructuredResponse<T>>}
 
 export interface AIModelCall {
@@ -41,6 +43,7 @@ export interface AIModelCall {
   operationId?: string;
   budgetOverrun?: boolean;
   occurredAt?: string;
+  imageInputCount?:number;
 }
 export interface ProjectCostLedger {projectId: string; startedAt: string; modelCalls: AIModelCall[]; inputTokens: number; cachedInputTokens: number; cacheWriteTokens: number; outputTokens: number; repairAttempts: number; totalCostUsd: number}
 export type BudgetStatus = 'healthy' | 'approaching_limit' | 'at_risk' | 'blocked';

@@ -37,7 +37,8 @@ export class OpenAIProvider implements AIProvider {
 
   async generateStructured<T>(request: AIStructuredRequest): Promise<AIStructuredResponse<T>> {
     const content: ResponseInputContent[] = [{type: 'input_text', text: request.inputText}];
-    if (request.image) content.push({type: 'input_image', detail: 'high', image_url: imageDataUrl(request.image, this.config.maxImageMb)});
+    const images=request.images??(request.image?[request.image]:[]);
+    for(const image of images)content.push({type:'input_image',detail:'high',image_url:imageDataUrl(image,this.config.maxImageMb)});
     const started = Date.now();
     let lastError: unknown;
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt += 1) {
@@ -55,7 +56,7 @@ export class OpenAIProvider implements AIProvider {
         if (!response.output_text) throw new AIResponseError('OpenAI returned no structured output.');
         let data: T;
         try {data = JSON.parse(response.output_text) as T;} catch (error) {throw new AIResponseError('OpenAI returned malformed JSON.', error);}
-        return {requestId: response.id, model: response.model, data, usage: normalizeOpenAIUsage(response.usage), durationMs: Date.now() - started};
+        return {requestId: response.id, model: response.model, data, usage: normalizeOpenAIUsage(response.usage), durationMs: Date.now() - started,imageInputCount:images.length};
       } catch (error) {
         lastError = error;
         if (!retryable(error) || attempt === this.config.maxRetries) throw mapError(error);

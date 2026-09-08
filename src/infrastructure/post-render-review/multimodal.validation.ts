@@ -1,0 +1,16 @@
+import assert from 'node:assert/strict';
+import {createHash} from 'node:crypto';
+import type {AIProvider,AIStructuredRequest,AIStructuredResponse} from '../ai/types.js';
+import {POST_RENDER_REVIEW_SCHEMA_VERSION,buildVisualQaBatches,validatePostRenderReview,type PostRenderVisualReview,type VisualQaTarget} from '../../domain/post-render-review/index.js';
+import {OpenAIPostRenderVisualQaProvider} from './openai-provider.js';
+
+class SpyAIProvider implements AIProvider{
+  readonly id='mock' as const;readonly requests:AIStructuredRequest[]=[];
+  async generateStructured<T>(request:AIStructuredRequest):Promise<AIStructuredResponse<T>>{this.requests.push(request);const manifest=JSON.parse(request.inputText).manifest as Array<{targetId:string;type:VisualQaTarget['type']}>;const data:PostRenderVisualReview={schemaVersion:POST_RENDER_REVIEW_SCHEMA_VERSION,verdict:'approved',overallScore:94,dimensions:{overallQuality:{score:94,status:'scored',confidence:.9}},issues:[],strengths:['pixels supplied'],confidence:.9,assetResults:manifest.filter(item=>item.type==='generated_asset').map(item=>({targetRef:item.targetId,score:94})),compositeResult:{targetRef:manifest.find(item=>item.type==='composite')?.targetId??manifest[0]!.targetId,score:94},requiresRegeneration:false,requiresUpstreamRevision:false};return{requestId:`spy_${this.requests.length}`,model:request.model,data:data as T,usage:{inputTokens:0,cachedInputTokens:0,cacheWriteTokens:0,outputTokens:0},durationMs:1,imageInputCount:request.images?.length??0}}
+}
+const target=(id:string,type:VisualQaTarget['type']):VisualQaTarget=>{const bytes=Uint8Array.from([id.length,1,2,3]);return{id,type,sourceRef:id,width:16,height:16,bytes,checksum:createHash('sha256').update(bytes).digest('hex'),pixelProvided:true,context:{},observability:[]}};
+const composite=target('composite:c','composite'),assets=Array.from({length:5},(_,index)=>target(`asset:${index}`,'generated_asset')),spy=new SpyAIProvider(),provider=new OpenAIPostRenderVisualQaProvider(spy,'terra',4),review=await provider.review([assets[0]!,composite],{projectId:'p'});
+assert.equal(spy.requests[0]?.images?.length,2);assert.deepEqual(provider.dispatches[0]?.targetIds,['composite:c','asset:0']);assert(!spy.requests[0]?.inputText.includes(Buffer.from(composite.bytes).toString('base64')));validatePostRenderReview(review,[composite,assets[0]!]);
+assert.deepEqual(buildVisualQaBatches([composite,...assets],4).map(batch=>batch.length),[4,3]);const batchSpy=new SpyAIProvider(),batchProvider=new OpenAIPostRenderVisualQaProvider(batchSpy,'terra',4);await batchProvider.review([composite,...assets],{projectId:'p'});assert.equal(batchSpy.requests.length,2);assert(batchSpy.requests.every(request=>(request.images?.length??0)<=4));assert(batchProvider.dispatches.every(dispatch=>dispatch.targetIds[0]==='composite:c'));
+const invalid={...review,issues:[{id:'bad',severity:'major' as const,owner:'asset_generation' as const,domain:'anatomy',targetType:'generated_asset' as const,targetRef:'asset:0',evidenceRegions:[],diagnosis:'bad',whyItMatters:'bad',recommendedAction:'fix',confidence:.9}]};assert.throws(()=>validatePostRenderReview(invalid,[{...assets[0]!,pixelProvided:false}]));
+console.log('Multimodal QA validation passed: real multi-image inputs, deterministic batching, manifest association and pixel authority.');
