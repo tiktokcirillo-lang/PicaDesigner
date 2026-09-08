@@ -1,0 +1,2 @@
+import type {ArtDirectorReviewRequest,ArtDirectorReviewSession} from '../domain/art-director-review/index.js';
+export const ensureArtDirectorReview=async(input:ArtDirectorReviewRequest):Promise<ArtDirectorReviewSession>=>{const response=await fetch('/api/art-director/review',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}),payload=await response.json() as ArtDirectorReviewSession&{error?:string};if(!response.ok)throw new Error(payload.error??'Art Director review failed.');return payload};

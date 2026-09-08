@@ -3,12 +3,14 @@ export const AI_DEFAULTS = {
   maxRetries: 1, maxImageMb: 10, maxProjectCostUsd: 0.75, targetProjectCostUsd: 0.50,
   monthlyBudgetUsd: 15, solEscalationEnabled: true,
   budgetReservationTtlSeconds: 600, budgetReservationSafetyFactor: 1.20, allowInMemoryBudget: false,
+  artDirectorMaxRevisionRounds:1,seniorCriticTargetUsd:.10,seniorCriticMaxUsd:.18,artDirectionRevisionTargetUsd:.06,artDirectionRevisionMaxUsd:.10,
 } as const;
 
 export interface OpenAIConfig {
   apiKey: string; forensicsModel: string; criticModel: string; requestTimeoutMs: number; maxRetries: number;
   maxImageMb: number; maxProjectCostUsd: number; targetProjectCostUsd: number; monthlyBudgetUsd: number;
   solEscalationEnabled: boolean; budgetReservationTtlSeconds:number; budgetReservationSafetyFactor:number; allowInMemoryBudget:boolean;
+  artDirectorMaxRevisionRounds:number;seniorCriticTargetUsd:number;seniorCriticMaxUsd:number;artDirectionRevisionTargetUsd:number;artDirectionRevisionMaxUsd:number;
 }
 const positiveNumber = (value: string | undefined, fallback: number): number => {
   const parsed = Number(value);
@@ -32,4 +34,5 @@ export const loadOpenAIConfig = (env: NodeJS.ProcessEnv = process.env): OpenAICo
   budgetReservationTtlSeconds: positiveNumber(env.AI_BUDGET_RESERVATION_TTL_SECONDS, AI_DEFAULTS.budgetReservationTtlSeconds),
   budgetReservationSafetyFactor: positiveNumber(env.AI_BUDGET_RESERVATION_SAFETY_FACTOR, AI_DEFAULTS.budgetReservationSafetyFactor),
   allowInMemoryBudget: (env.AI_ALLOW_INMEMORY_BUDGET ?? 'false').toLowerCase() === 'true',
+  artDirectorMaxRevisionRounds:nonNegativeInteger(env.AI_ART_DIRECTOR_MAX_REVISION_ROUNDS,AI_DEFAULTS.artDirectorMaxRevisionRounds),seniorCriticTargetUsd:positiveNumber(env.AI_SENIOR_CRITIC_TARGET_USD,AI_DEFAULTS.seniorCriticTargetUsd),seniorCriticMaxUsd:positiveNumber(env.AI_SENIOR_CRITIC_MAX_USD,AI_DEFAULTS.seniorCriticMaxUsd),artDirectionRevisionTargetUsd:positiveNumber(env.AI_ART_DIRECTION_REVISION_TARGET_USD,AI_DEFAULTS.artDirectionRevisionTargetUsd),artDirectionRevisionMaxUsd:positiveNumber(env.AI_ART_DIRECTION_REVISION_MAX_USD,AI_DEFAULTS.artDirectionRevisionMaxUsd),
 });

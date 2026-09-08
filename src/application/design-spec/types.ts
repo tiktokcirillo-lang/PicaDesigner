@@ -3,6 +3,7 @@ import type {ReferenceIntelligenceSession} from '../reference-intelligence/index
 import type {AdaptedDesignConstraints, BrandInput, BrandIntelligenceSession, BrandReferenceCompatibilityReport} from '../../domain/brand-intelligence/index.js';
 import type {CreativeDirectionSession} from '../../domain/creative-direction/index.js';
 import type {FormatContext,LayoutIntelligenceSession} from '../../domain/layout-engine/index.js';
+import type {ArtDirectorReviewSession,ReviewedDesignPackage} from '../../domain/art-director-review/index.js';
 
 export interface GenerateDesignSpecRequest {
   projectId: string;
@@ -17,6 +18,8 @@ export interface GenerateDesignSpecRequest {
   adaptedDesignConstraints?: AdaptedDesignConstraints;
   creativeDirection?: CreativeDirectionSession;
   layoutIntelligence?: LayoutIntelligenceSession;
+  artDirectorReview?: ArtDirectorReviewSession;
+  reviewedDesignPackage?: ReviewedDesignPackage;
   /** @deprecated Temporary compatibility for pre-3.4 clients. */
   legacyPrompt?: string;
 }

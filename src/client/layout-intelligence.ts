@@ -1,0 +1,2 @@
+import type {CreateLayoutIntelligenceRequest} from '../application/layout-intelligence/index.js';import type {LayoutIntelligenceSession} from '../domain/layout-engine/index.js';
+export const ensureLayoutIntelligence=async(input:CreateLayoutIntelligenceRequest):Promise<LayoutIntelligenceSession>=>{const r=await fetch('/api/layout/plan',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input)}),p=await r.json() as LayoutIntelligenceSession&{error?:string};if(!r.ok)throw new Error(p.error??'Layout Intelligence failed.');return p};

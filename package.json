@@ -13,6 +13,7 @@
     "creative:validation": "tsx src/domain/creative-direction/creative-direction.validation.ts",
     "budget:validation": "tsx src/infrastructure/ai/budget/budget.validation.ts",
     "layout:validation": "tsx src/domain/layout-engine/format-registry.validation.ts && tsx src/domain/layout-engine/layout-engine.validation.ts && tsx scripts/ui-format-validation.ts",
+    "critic:validation": "tsx src/domain/art-director-review/art-director-review.validation.ts",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",

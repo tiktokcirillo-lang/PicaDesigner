@@ -4,7 +4,7 @@ import type {BudgetStore} from './budget-tracker.js';
 import type {AIProvider,AIStage,AIStructuredRequest,AIStructuredResponse,ProjectCostLedger} from '../types.js';
 import {AITimeoutError} from '../providers/errors.js';
 
-const stageFor=(pass:AIStructuredRequest['pass']):AIStage=>pass==='creative_direction'?'creative_direction':pass==='generate_design_spec'?'design_spec':pass==='sol_critic'?'senior_critic':pass==='refine_copy'?'other':['observation','relationships','domain_analysis','principle_inference','consistency_critique','repair'].includes(pass)?'visual_forensics':'other';
+const stageFor=(pass:AIStructuredRequest['pass']):AIStage=>pass==='creative_direction'?'creative_direction':pass==='creative_direction_revision'?'art_direction_revision':pass==='generate_design_spec'?'design_spec':pass==='sol_critic'?'senior_critic':pass==='refine_copy'?'other':['observation','relationships','domain_analysis','principle_inference','consistency_critique','repair'].includes(pass)?'visual_forensics':'other';
 const stableOperationId=(request:AIStructuredRequest)=>{const value=`${request.projectId}|${stageFor(request.pass)}|${request.pass}|${request.schemaName}|${request.repairAttempt?'repair':'initial'}|${request.inputText}`;let hash=2166136261;for(let index=0;index<value.length;index++)hash=Math.imul(hash^value.charCodeAt(index),16777619);return`${request.projectId}:${request.pass}:${(hash>>>0).toString(16)}`;};
 export interface BudgetedExecutorOptions{monthlyLimitUsd?:number;safetyFactor?:number;ttlSeconds?:number;stage?:AIStage;stageLimitUsd?:number}
 

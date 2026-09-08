@@ -27,14 +27,15 @@ export class DesignSpecPromptBuilder {
     if (request.creativeDirection && (!validateCreativeDirectionSession(request.creativeDirection) || request.creativeDirection.projectId !== request.projectId || request.creativeDirection.status !== 'ready' || !request.creativeDirection.selectedRoute)) throw new Error('Não foi possível construir uma direção criativa válida.');
     if (request.layoutIntelligence && (!validateLayoutIntelligenceSession(request.layoutIntelligence) || request.layoutIntelligence.projectId !== request.projectId || request.layoutIntelligence.status !== 'ready' || request.layoutIntelligence.layoutDocument?.frames[0]?.creativeDirectionSessionId !== request.creativeDirection?.sessionId)) throw new Error('Não foi possível utilizar um plano de layout válido.');
     const referenceContext = request.referenceIntelligence ? buildReferenceDesignContext(request.referenceIntelligence) : undefined;
-    const route = request.creativeDirection?.selectedRoute;
+    if(request.artDirectorReview&&(!request.artDirectorReview.readyForRender||!request.reviewedDesignPackage||request.reviewedDesignPackage.reviewSessionId!==request.artDirectorReview.sessionId))throw new Error('Não foi possível aprovar a direção de arte para produção.');
+    const route = request.reviewedDesignPackage?.creativeRoute??request.creativeDirection?.selectedRoute;
     const modules = {
       projectContext: {copy: request.copy, tone: request.tone, destinationTool: request.destinationTool},
       formatRules: {format: request.format, instruction: 'Respect exact dimensions, aspect ratio, safe areas, and destination-tool constraints.'},
       brandContext: brand.context,
       referenceDesignDNA: referenceContext,
       creativeDirection: route ? {concept: route.concept, creativeDevice: route.creativeDevice, heroStrategy: route.heroStrategy, compositionStrategy: route.compositionStrategy, hierarchyStrategy: route.hierarchyStrategy, typographyBehavior: route.typographyBehavior, colorBehavior: route.colorBehavior, imageStrategy: route.imageStrategy, brandExpression: route.brandExpression, formatAdaptability: route.formatAdaptability, provenance: route.provenance} : undefined,
-      authoritativeLayoutPlan: request.layoutIntelligence?.layoutDocument?.frames[0],
+      authoritativeLayoutPlan: request.reviewedDesignPackage?.layoutPlan??request.layoutIntelligence?.layoutDocument?.frames[0],
       copyHierarchy: {instruction: 'Derive title, subtitle, body, data, and CTA hierarchy only when present in the supplied copy.'},
     };
     const decisions: DesignDecision[] = [

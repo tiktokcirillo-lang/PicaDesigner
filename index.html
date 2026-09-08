@@ -1368,6 +1368,8 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
 <script type="module">
   import {analyzeVisualReference, invalidateReferenceIntelligence} from '/src/client/reference-intelligence.ts';
   import {ensureCreativeDirection} from '/src/client/creative-direction.ts';
+  import {ensureLayoutIntelligence} from '/src/client/layout-intelligence.ts';
+  import {ensureArtDirectorReview} from '/src/client/art-director-review.ts';
   import {createBrandIntelligenceSession} from '/src/domain/brand-intelligence/index.ts';
 
   const DB_NAME = 'AriaDB';
@@ -1441,6 +1443,8 @@ Exemplo: slide de abertura, título da seção, conteúdo de proposta, dados fin
   window.brandSession = null;
   window.creativeDirection = null;
   window.layoutIntelligence = null;
+  window.artDirectorReview = null;
+  window.reviewedDesignPackage = null;
   window.activeProjectId = crypto.randomUUID();
   window.referenceAnalysisDepth = 'standard';
 
@@ -2043,6 +2047,10 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
       }
       if (window.creativeDirection.status !== 'ready') throw new Error('Não foi possível construir uma direção criativa válida.');
       window.showCreativeDiagnostics(window.creativeDirection);
+      window.layoutIntelligence = await ensureLayoutIntelligence({projectId:window.activeProjectId,creativeDirection:window.creativeDirection,brandIntelligence:window.brandSession,referenceIntelligence:window.referenceSession,format,formatContext,destinationTool:tool,existingSession:window.layoutIntelligence});
+      window.artDirectorReview = await ensureArtDirectorReview({projectId:window.activeProjectId,creativeDirection:window.creativeDirection,layoutIntelligence:window.layoutIntelligence,brandIntelligence:window.brandSession,referenceIntelligence:window.referenceSession,format,destinationTool:tool,existingReviewSession:window.artDirectorReview});
+      if(!window.artDirectorReview.readyForRender||!window.artDirectorReview.reviewedDesignPackage)throw new Error('Não foi possível aprovar a direção de arte para produção.');
+      window.reviewedDesignPackage=window.artDirectorReview.reviewedDesignPackage;
       const response = await fetch('/api/ai/generate-design-spec', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
@@ -2057,12 +2065,14 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           referenceIntelligence: window.referenceSession,
           brandIntelligence: window.brandSession,
           creativeDirection: window.creativeDirection
+          ,layoutIntelligence:window.layoutIntelligence,artDirectorReview:window.artDirectorReview,reviewedDesignPackage:window.reviewedDesignPackage
         })
       });
       const payload = await window.parseApiResponse(response);
       if (!response.ok) throw new Error(payload.error || `Falha HTTP ${response.status}`);
       window.brandSession = payload.brandIntelligence || null;
       window.layoutIntelligence = payload.layoutIntelligence || null;
+      if(new URLSearchParams(window.location.search).get('debug')==='critic'&&window.artDirectorReview){const r=window.artDirectorReview,c=r.critique,counts=(c?.issues??[]).reduce((a,i)=>(a[i.severity]=(a[i.severity]||0)+1,a),{});let p=document.getElementById('criticDebugPanel');if(!p){p=document.createElement('aside');p.id='criticDebugPanel';p.style.cssText='position:fixed;left:12px;bottom:12px;z-index:99999;background:#fff;color:#111;border:2px solid #8b5cf6;padding:12px;font:11px/1.4 monospace;max-width:390px';document.body.appendChild(p)}p.textContent=`CRITIC DIAGNOSTIC — status ${r.outcome} | ready ${r.readyForRender} | local ${r.quality.localAuditScore.toFixed(1)} | Sol ${r.quality.criticScore.toFixed(1)} | agreement ${r.quality.agreementScore.toFixed(1)} | risk ${r.quality.unresolvedRisk.toFixed(3)} | verdict ${c?.verdict??'none'} | issues ${JSON.stringify(counts)} | scope ${c?.recommendedRevisionScope??'none'} | rounds ${r.revisionRounds.length} | original ${r.originalCreativeDirectionSessionId}/${r.originalLayoutSessionId} | final ${r.finalCreativeRoute?.id??'none'}/${r.finalLayoutPlan?.layoutId??'none'} | cost $${Number(r.cost||0).toFixed(4)}`}
       if (new URLSearchParams(window.location.search).get('debug') === 'layout' && window.layoutIntelligence?.layoutDocument?.frames?.[0]) {
         const plan = window.layoutIntelligence.layoutDocument.frames[0];
         let panel = document.getElementById('layoutDebugPanel');
@@ -2108,6 +2118,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
           brandSession: window.brandSession,
           creativeDirection: window.creativeDirection,
           layoutIntelligence: window.layoutIntelligence,
+          artDirectorReview:window.artDirectorReview,
+          reviewedDesignPackage:window.reviewedDesignPackage,
           aiCosts: {referenceAnalysisCost: window.referenceSession?.aiUsage?.totalCostUsd || 0, brandAnalysisCost: window.brandSession?.aiUsage?.totalCostUsd || 0, creativeDirectionCost: window.creativeDirection?.cost || 0, designSpecCost: payload.stageCostUsd || 0, projectTotalAiCost: payload.aiUsage?.totalCostUsd || 0}
         }
       };
@@ -2432,6 +2444,8 @@ Seja absolutamente cirúrgica, detalhada e execute com maestria. Cada especifica
     window.brandSession = state.brandSession || null;
     window.creativeDirection = state.creativeDirection || null;
     window.layoutIntelligence = state.layoutIntelligence || null;
+    window.artDirectorReview = state.artDirectorReview || null;
+    window.reviewedDesignPackage = state.reviewedDesignPackage || null;
     if (window.referenceSession) window.showForensicsDiagnostics(window.referenceSession);
     if (window.creativeDirection) window.showCreativeDiagnostics(window.creativeDirection);
 

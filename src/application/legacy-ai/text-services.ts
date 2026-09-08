@@ -72,6 +72,7 @@ export const generateDesignSpec = async (input: GenerateDesignSpecRequest, depen
     const fingerprint = await fingerprintCreativeDirection({projectId: input.projectId, copy: input.copy, format: input.format, destinationTool: input.destinationTool, tone: input.tone, brandIntelligence: input.brandIntelligence, referenceIntelligence: input.referenceIntelligence, adaptedDesignConstraints: input.adaptedDesignConstraints??brand.adapted});
     if (input.creativeDirection.inputFingerprint !== fingerprint) throw new Error('Não foi possível construir uma direção criativa válida.');
   }
+  if(input.creativeDirection&&(!input.artDirectorReview?.readyForRender||!input.reviewedDesignPackage))throw new Error('Não foi possível aprovar a direção de arte para produção.');
   const formatContext=input.format.startsWith('meta_ads_')?{...input.formatContext,platform:'meta',usage:'advertising'}:input.formatContext;
   const layoutIntelligence=input.creativeDirection ? (input.layoutIntelligence??createLayoutIntelligence({projectId:input.projectId,creativeDirection:input.creativeDirection,brandIntelligence:brand.session,referenceIntelligence:input.referenceIntelligence,format:input.format,formatContext,destinationTool:input.destinationTool})) : undefined;
   if(layoutIntelligence?.status==='failed')throw new Error(`Layout Intelligence failed: ${layoutIntelligence.failureReason}`);
