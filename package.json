@@ -23,7 +23,7 @@
     "db:validate": "tsx scripts/db-validate.ts",
     "image:validation": "tsx src/domain/image-assets/image-assets.validation.ts",
     "asset-storage:validation": "tsx src/infrastructure/image-generation/asset-storage.validation.ts",
-    "source-assets:validation": "tsx src/domain/source-assets/source-assets.validation.ts",
+    "source-assets:validation": "tsx src/domain/source-assets/source-assets.validation.ts && tsx src/infrastructure/blob-health.validation.ts",
     "visual-qa:validation": "tsx src/domain/post-render-review/post-render-review.validation.ts && tsx src/infrastructure/post-render-review/multimodal.validation.ts",
     "regeneration:validation": "tsx src/application/post-render-review/regeneration.validation.ts",
     "build": "vite build",
