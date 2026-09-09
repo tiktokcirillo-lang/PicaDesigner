@@ -999,3 +999,4 @@
     padding: 28px;
   }
 }
+.source-field{display:grid;gap:8px}.source-field .dropzone{position:relative;display:grid;justify-items:center;gap:6px;padding:18px;border:1px dashed var(--border);border-radius:10px;text-align:center;cursor:pointer}.source-field .dropzone input{position:absolute;inset:0;opacity:0;cursor:pointer}.source-field .file-ready{display:grid;grid-template-columns:48px 1fr auto;gap:10px;align-items:center;padding:9px;border:1px solid var(--border);border-radius:10px}.source-field .file-ready img{width:48px;height:48px;object-fit:cover;border-radius:7px}.source-field .file-ready div{min-width:0;display:grid}.source-field .file-ready strong,.source-field .file-ready span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.upload-state{font-size:12px;color:var(--text-muted)}.upload-state--failed{color:var(--danger)}

@@ -3,6 +3,8 @@ import { History, Play, RefreshCw, Save } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import type { SafeProjectState } from "../../domain/project-persistence/index.js";
 import { ApiClientError } from "../../client/api-response.js";
+import { listProjectSourceAssets } from "../../client/source-assets.js";
+import type { ProjectSourceAssetSummary } from "../../domain/source-assets/index.js";
 import {
   getProjectState,
   saveDurableCheckpoint,
@@ -43,10 +45,19 @@ const leftTabs: [WorkspaceTab, string][] = [
     ["details", "Detalhes"],
     ["export", "Export"],
   ];
-function restoredDraft(state: SafeProjectState): WorkspaceDraft {
-  const input = state.workflow.workspace_input as
-    Partial<WorkspaceDraft> | undefined;
-  return { ...DEFAULT_DRAFT, ...input, reference: undefined };
+function restoredDraft(state: SafeProjectState, assets: ProjectSourceAssetSummary[]): WorkspaceDraft {
+  const input = state.workflow.workspace_input as Record<string, unknown> | undefined;
+  const byId = new Map(assets.map((asset) => [asset.assetId, asset]));
+  const ids = (key: string) => Array.isArray(input?.[key]) ? (input?.[key] as string[]).map((id) => byId.get(id)).filter((asset): asset is ProjectSourceAssetSummary => Boolean(asset)) : [];
+  return {
+    ...DEFAULT_DRAFT,
+    ...(input as Partial<WorkspaceDraft>),
+    referenceAsset: typeof input?.referenceAssetId === "string" ? byId.get(input.referenceAssetId) : undefined,
+    logoAsset: typeof input?.logoAssetId === "string" ? byId.get(input.logoAssetId) : undefined,
+    productAssets: ids("productAssetIds"),
+    brandPhotoAssets: ids("brandPhotoAssetIds"),
+    graphicAssets: ids("graphicAssetIds"),
+  };
 }
 export function ProjectWorkspace() {
   const { projectId = "" } = useParams(),
@@ -85,9 +96,12 @@ export function ProjectWorkspace() {
     async (signal?: AbortSignal) => {
       try {
         setError("");
-        const state = await getProjectState(projectId, signal);
+        const [state, sourceAssets] = await Promise.all([
+          getProjectState(projectId, signal),
+          listProjectSourceAssets(projectId, signal),
+        ]);
         setSnapshot(state);
-        setDraft(restoredDraft(state));
+        setDraft(restoredDraft(state, sourceAssets.assets));
         setPipeline(pipelineFromSnapshot(state));
         revision.current = state.project.revision;
         hydrated.current = true;
@@ -170,7 +184,7 @@ export function ProjectWorkspace() {
   }
   async function generate() {
     if (!snapshot || pipeline.running) return;
-    if (!draft.copyText.trim() && !draft.reference) {
+    if (!draft.copyText.trim() && !draft.referenceAsset) {
       setError("Adicione uma copy ou referência antes de gerar.");
       return;
     }
@@ -331,12 +345,13 @@ export function ProjectWorkspace() {
             <BriefPanel draft={draft} onChange={change} />
           ) : leftTab === "reference" ? (
             <ReferencePanel
+              projectId={projectId}
               draft={draft}
               onChange={change}
               onError={setError}
             />
           ) : leftTab === "brand" ? (
-            <BrandPanel draft={draft} onChange={change} />
+            <BrandPanel projectId={projectId} draft={draft} onChange={change} onError={setError} />
           ) : (
             <FormatSelector draft={draft} onChange={change} />
           )}

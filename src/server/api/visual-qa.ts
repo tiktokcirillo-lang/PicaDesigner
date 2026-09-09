@@ -27,6 +27,9 @@ import {
   PersistenceError,
   ProductionAuthorityPersistenceError,
 } from "../../domain/project-persistence/index.js";
+import {resolveProjectSourceRegistry} from "../../application/source-assets/index.js";
+import {mergeProjectAssetRegistries} from "../../domain/source-assets/index.js";
+import {applicationProjectSourceAssetRepository,applicationProjectSourceAssetStore,createCompositeAssetStore} from "../../infrastructure/source-assets/index.js";
 
 export const createVisualQaRouter = () => {
   const router = Router();
@@ -36,7 +39,9 @@ export const createVisualQaRouter = () => {
         return res
           .status(400)
           .json({ error: "Arbitrary QA prompts are not accepted." });
-      const body = req.body as EnsurePostRenderReviewRequest,
+      const incoming = req.body as EnsurePostRenderReviewRequest,
+        source=await resolveProjectSourceRegistry(incoming.projectId,incoming.sourceAssetIds??[],applicationProjectSourceAssetRepository,applicationProjectSourceAssetStore),
+        body:EnsurePostRenderReviewRequest={...incoming,assetRegistry:mergeProjectAssetRegistries(source.registry,incoming.assetRegistry)},
         config = loadOpenAIConfig(),
         mock = (process.env.AI_VISUAL_QA_PROVIDER ?? "openai") === "mock",
         model = config.postRenderQaModel;
@@ -65,8 +70,9 @@ export const createVisualQaRouter = () => {
           config.postRenderQaMaxImages,
         ),
         rasterizer = new ResvgCompositeRasterizer();
+      const compositeStore=createCompositeAssetStore(applicationGeneratedAssetStore,applicationProjectSourceAssetStore);
       const initial = await ensurePostRenderReview(body, {
-        store: applicationGeneratedAssetStore,
+        store: compositeStore,
         rasterizer,
         provider,
         model,
@@ -116,10 +122,11 @@ export const createVisualQaRouter = () => {
             );
           }
         }
+        const safeSession=JSON.parse(JSON.stringify(session,(key,value)=>key==="backingRef"&&typeof value==="string"&&value.startsWith("source-private://")?undefined:value));
         return res.json(
           req.query.debug === "qa"
             ? {
-                ...session,
+                ...safeSession,
                 debugQa: {
                   pixelTargetsSent:
                     session.qaPlan.assetTargets.length +
@@ -139,7 +146,7 @@ export const createVisualQaRouter = () => {
                     ) ?? false,
                 },
               }
-            : session,
+            : safeSession,
         );
       };
       if (initial.outcome !== "partial" || !body.imageAssetSession)
@@ -177,7 +184,7 @@ export const createVisualQaRouter = () => {
             assetRegistry: body.assetRegistry,
           },
           {
-            store: applicationGeneratedAssetStore,
+            store: compositeStore,
             imageProvider,
             qaProvider: verification,
             rasterizer,

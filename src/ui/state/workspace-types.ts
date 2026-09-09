@@ -1,5 +1,6 @@
 import type { AnalysisDepth } from "../../domain/visual-forensics/index.js";
 import type { SafeProjectState } from "../../domain/project-persistence/index.js";
+import type { ProjectSourceAssetSummary } from "../../domain/source-assets/index.js";
 export type WorkspaceTab = "briefing" | "reference" | "brand" | "format";
 export type RightTab = "pipeline" | "details" | "export";
 export interface WorkspaceDraft {
@@ -17,24 +18,19 @@ export interface WorkspaceDraft {
   bodyFont: string;
   brandUrl: string;
   visualNotes: string;
-  reference?: {
-    name: string;
-    mimeType: string;
-    size: number;
-    width?: number;
-    height?: number;
-    data: string;
-  };
+  referenceAsset?: ProjectSourceAssetSummary;
+  logoAsset?: ProjectSourceAssetSummary;
+  productAssets: ProjectSourceAssetSummary[];
+  brandPhotoAssets: ProjectSourceAssetSummary[];
+  graphicAssets: ProjectSourceAssetSummary[];
 }
-export interface WorkspaceInputState extends Omit<WorkspaceDraft, "reference"> {
+export interface WorkspaceInputState extends Omit<WorkspaceDraft,"referenceAsset"|"logoAsset"|"productAssets"|"brandPhotoAssets"|"graphicAssets"> {
   formatContext?: { platform: string; usage: string };
-  referenceMetadata?: {
-    name: string;
-    mimeType: string;
-    size: number;
-    width?: number;
-    height?: number;
-  };
+  referenceAssetId?: string;
+  logoAssetId?: string;
+  productAssetIds: string[];
+  brandPhotoAssetIds: string[];
+  graphicAssetIds: string[];
 }
 export type PipelineStageId =
   | "preparation"
@@ -82,4 +78,7 @@ export const DEFAULT_DRAFT: WorkspaceDraft = {
   bodyFont: "",
   brandUrl: "",
   visualNotes: "",
+  productAssets: [],
+  brandPhotoAssets: [],
+  graphicAssets: [],
 };

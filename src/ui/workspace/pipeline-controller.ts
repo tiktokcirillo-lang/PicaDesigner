@@ -1,4 +1,4 @@
-import { analyzeVisualReference } from "../../client/reference-intelligence.js";
+import { analyzeDurableVisualReference } from "../../client/reference-intelligence.js";
 import { ensureCreativeDirection } from "../../client/creative-direction.js";
 import { ensureLayoutIntelligence } from "../../client/layout-intelligence.js";
 import { ensureArtDirectorReview } from "../../client/art-director-review.js";
@@ -53,18 +53,19 @@ export async function runDesignPipeline(input: {
     revision = saved.project.revision;
   };
   const workspaceInput = toWorkspaceInput(input.draft),
-    workspaceFingerprint = await fingerprintWorkspaceInput(workspaceInput);
+    workspaceFingerprint = await fingerprintWorkspaceInput(workspaceInput),
+    sourceAssetIds=[input.draft.logoAsset,...input.draft.productAssets,...input.draft.brandPhotoAssets,...input.draft.graphicAssets].filter((asset):asset is NonNullable<typeof asset>=>Boolean(asset)).map(asset=>asset.assetId);
   input.onStage("preparation");
   await persist("workspace_input", workspaceInput, workspaceFingerprint);
   let reference = workflow.reference_intelligence;
-  if (input.draft.reference) {
+  if (input.draft.referenceAsset) {
     input.onStage("reference");
-    reference = await analyzeVisualReference({
-      image: input.draft.reference,
+    reference = await analyzeDurableVisualReference({
+      sourceAsset: input.draft.referenceAsset,
       projectId: input.projectId,
       analysisDepth: input.draft.analysisDepth,
       existingSession: reference as Parameters<
-        typeof analyzeVisualReference
+        typeof analyzeDurableVisualReference
       >[0]["existingSession"],
     });
     if ((reference as { status?: string }).status !== "ready")
@@ -84,6 +85,8 @@ export async function runDesignPipeline(input: {
         headlineFont: input.draft.titleFont,
         bodyFont: input.draft.bodyFont,
         url: input.draft.brandUrl,
+        logoAssets: input.draft.logoAsset ? [{id:input.draft.logoAsset.assetId,type:"logo" as const,mediaType:input.draft.logoAsset.mediaType,fileName:input.draft.logoAsset.filename,fingerprint:input.draft.logoAsset.checksum,source:"logo_asset" as const,verified:true}] : undefined,
+        assets: [...input.draft.graphicAssets,...input.draft.brandPhotoAssets].map(asset=>({id:asset.assetId,type:"graphic_asset" as const,mediaType:asset.mediaType,fileName:asset.filename,fingerprint:asset.checksum,source:"brand_asset" as const,verified:true})),
       }
     : undefined;
   const brand = createBrandIntelligenceSession(
@@ -156,6 +159,7 @@ export async function runDesignPipeline(input: {
       typeof ensureRenderSession
     >[0]["existingSession"],
     fontAvailability: ["Arial", "Helvetica", "sans-serif"],
+    sourceAssetIds,
   });
   await persist("render_session", render, render.inputFingerprint);
   let imageAssets = workflow.image_asset_session as Parameters<
@@ -172,6 +176,7 @@ export async function runDesignPipeline(input: {
       },
       quality: "standard",
       fontAvailability: ["Arial", "Helvetica", "sans-serif"],
+      sourceAssetIds,
     });
     render = imageAssets.renderSession;
     await persist("image_asset_session", imageAssets, imageAssets.sessionId);
@@ -189,6 +194,7 @@ export async function runDesignPipeline(input: {
     existingSession: workflow.post_render_review as Parameters<
       typeof ensurePostRenderReview
     >[0]["existingSession"],
+    sourceAssetIds,
   });
   if (imageAssets?.generatedAssets?.length && !qa.visualApproved)
     throw new Error("A revisão visual não aprovou a peça para produção.");

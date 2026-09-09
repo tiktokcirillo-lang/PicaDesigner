@@ -1,6 +1,7 @@
 import {DESIGN_DNA_SCHEMA_VERSION} from '../domain/art-direction/index.js';
 import {VISUAL_FORENSICS_SCHEMA_VERSION, type AnalysisDepth} from '../domain/visual-forensics/index.js';
 import {REFERENCE_INTELLIGENCE_SCHEMA_VERSION, type ReferenceIntelligenceSession, type ReferenceSourceMetadata} from '../application/reference-intelligence/index.js';
+import type {ProjectSourceAssetSummary} from '../domain/source-assets/index.js';
 
 export interface BrowserReferenceImage {data: string; mimeType: string; name: string; size?: number; lastModified?: number; width?: number; height?: number}
 const sessionCache = new Map<string, ReferenceIntelligenceSession>();
@@ -39,6 +40,15 @@ export const analyzeVisualReference = async (input: {image: BrowserReferenceImag
   const response = await fetch('/api/visual-forensics/analyze', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({projectId: input.projectId, image: {kind: 'base64', data: input.image.data, mediaType: input.image.mimeType}, imageMetadata, analysisDepth})});
   const session = await parseResponse(response) as ReferenceIntelligenceSession;
   sessionCache.set(`${fingerprint}:${analysisDepth}`, session);
+  return session;
+};
+
+export const analyzeDurableVisualReference = async (input:{sourceAsset:ProjectSourceAssetSummary;projectId:string;analysisDepth?:AnalysisDepth;existingSession?:ReferenceIntelligenceSession}):Promise<ReferenceIntelligenceSession>=>{
+  const analysisDepth=input.analysisDepth??'standard',fingerprint=input.sourceAsset.checksum,cached=input.existingSession??sessionCache.get(`${fingerprint}:${analysisDepth}`);
+  if(isReusableReferenceSession(cached,fingerprint,analysisDepth,input.projectId))return cached;
+  const response=await fetch('/api/visual-forensics/analyze',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({projectId:input.projectId,sourceAssetId:input.sourceAsset.assetId,analysisDepth})});
+  const session=await parseResponse(response) as ReferenceIntelligenceSession;
+  sessionCache.set(`${fingerprint}:${analysisDepth}`,session);
   return session;
 };
 

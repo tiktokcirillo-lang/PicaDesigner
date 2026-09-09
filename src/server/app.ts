@@ -15,6 +15,8 @@ import {applicationProductionArtifactStore} from '../infrastructure/export-engin
 import {createProjectsRouter} from './api/projects.js';
 import {applicationProjectRepository} from '../infrastructure/project-persistence/index.js';
 import {createPreviewRouter} from './api/preview.js';
+import {createSourceAssetsRouter} from './api/source-assets.js';
+import {applicationProjectSourceAssetStore} from '../infrastructure/source-assets/index.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -25,8 +27,10 @@ export const createServerApp = () => {
   app.get('/api/health/asset-store',async(_request,response)=>response.json(await applicationGeneratedAssetStore.health()));
   app.get('/api/health/export-store',async(_request,response)=>response.json(await applicationProductionArtifactStore.health()));
   app.get('/api/health/project-store',async(_request,response)=>response.json(await applicationProjectRepository.health()));
+  app.get('/api/health/source-asset-store',async(_request,response)=>response.json(await applicationProjectSourceAssetStore.health()));
   app.use('/api/projects',createProjectsRouter());
   app.use('/api/projects',createPreviewRouter());
+  app.use('/api/projects',createSourceAssetsRouter());
   app.use('/api/visual-forensics', createVisualForensicsRouter());
   app.use('/api/creative-direction', createCreativeDirectionRouter());
   app.use('/api/layout', createLayoutRouter());

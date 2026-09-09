@@ -30,15 +30,11 @@ export const toWorkspaceInput = (
   visualNotes: draft.visualNotes,
   customWidth: draft.customWidth,
   customHeight: draft.customHeight,
-  referenceMetadata: draft.reference
-    ? {
-        name: draft.reference.name,
-        mimeType: draft.reference.mimeType,
-        size: draft.reference.size,
-        width: draft.reference.width,
-        height: draft.reference.height,
-      }
-    : undefined,
+  referenceAssetId: draft.referenceAsset?.assetId,
+  logoAssetId: draft.logoAsset?.assetId,
+  productAssetIds: draft.productAssets.map((asset) => asset.assetId),
+  brandPhotoAssetIds: draft.brandPhotoAssets.map((asset) => asset.assetId),
+  graphicAssetIds: draft.graphicAssets.map((asset) => asset.assetId),
 });
 export const fingerprintWorkspaceInput = async (input: WorkspaceInputState) => {
   const bytes = new TextEncoder().encode(JSON.stringify(input)),

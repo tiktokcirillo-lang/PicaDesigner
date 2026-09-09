@@ -5,7 +5,7 @@ import type {ReviewedDesignPackage} from '../../domain/art-director-review/index
 import type {ProjectAssetRegistry,RenderSession} from '../../domain/render-engine/index.js';
 import {materializeSvgAssetsForServer} from '../../infrastructure/post-render-review/index.js';
 
-export interface EnsurePostRenderReviewRequest{projectId:string;reviewedDesignPackage:ReviewedDesignPackage;renderSession:RenderSession;imageAssetSession?:ImageAssetSession;assetRegistry:ProjectAssetRegistry;existingSession?:PostRenderReviewSession}
+export interface EnsurePostRenderReviewRequest{projectId:string;reviewedDesignPackage:ReviewedDesignPackage;renderSession:RenderSession;imageAssetSession?:ImageAssetSession;assetRegistry:ProjectAssetRegistry;sourceAssetIds?:string[];existingSession?:PostRenderReviewSession}
 type ReviewDependencies={store:GeneratedAssetStore;rasterizer:CompositeRasterizer;provider:PostRenderVisualQaProvider;model:string;estimatedCostUsd:number;maxImages?:number};
 
 export const ensurePostRenderReview=async(r:EnsurePostRenderReviewRequest,d:ReviewDependencies):Promise<PostRenderReviewSession>=>{
