@@ -56,6 +56,23 @@ export function CampaignVariantNavigator({
               >
                 {variant.status.replaceAll("_", " ")}
               </Badge>
+              <small className="campaign-variant-progress">
+                {(
+                  [
+                    "layout",
+                    "review",
+                    "render",
+                    "assets",
+                    "visualQa",
+                    "authority",
+                  ] as const
+                )
+                  .map(
+                    (stage) =>
+                      `${stage === "visualQa" ? "QA" : stage}: ${variant.readiness[stage] ? "ok" : "—"}`,
+                  )
+                  .join(" · ")}
+              </small>
             </button>
             {(variant.status === "failed" || variant.status === "blocked") &&
             !family.warnings.includes("campaign_upstream_revision_required") ? (

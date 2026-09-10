@@ -60,16 +60,30 @@ family = {
         reviewedDesignPackage: {
           layoutPlan: { format: { id: variant.formatId } },
         },
-      renderSession: {
-        sessionId: `render_${variant.formatId}`,
-        projectId:"export-project",
-        readiness:{productionReady:true,missingRequiredAssets:[],fontIssues:[]},
-        renderDocument: {
-          scenes: [{ sceneId, width: variant.width, height: variant.height }],
+        renderSession: {
+          sessionId: `render_${variant.formatId}`,
+          projectId: "export-project",
+          readiness: {
+            productionReady: true,
+            missingRequiredAssets: [],
+            fontIssues: [],
+          },
+          renderDocument: {
+            scenes: [{ sceneId, width: variant.width, height: variant.height }],
+          },
+          artifacts: [
+            {
+              artifactId: `artifact_${variant.formatId}`,
+              sceneId,
+              svg,
+              checksum,
+              width: variant.width,
+              height: variant.height,
+              readiness: { productionReady: true },
+            },
+          ],
+          sourceVersions: {},
         },
-        artifacts: [{artifactId:`artifact_${variant.formatId}`,sceneId,svg,checksum,width:variant.width,height:variant.height,readiness:{productionReady:true}}],
-        sourceVersions: {},
-      },
         finalAssets: { projectId: "export-project", assets: [] },
         canonicalArtifacts: [{ sceneId, svg, checksum }],
         pixelQaSummary: { score: 100, verdict: "approved" },
@@ -124,6 +138,26 @@ const db = createMockCampaignDatabase(),
   );
 assert.equal(session.status, "ready");
 assert.equal(session.artifact.byteSize > 0, true);
+const manifest = session.manifest as {
+  variants: Array<{
+    productionAuthorityId: string;
+    renderSessionId: string;
+    postRenderReviewSessionId: string;
+    pngChecksum: string;
+  }>;
+};
+assert.equal(manifest.variants.length, 4);
+assert.equal(
+  new Set(manifest.variants.map((x) => x.productionAuthorityId)).size,
+  4,
+);
+assert.equal(new Set(manifest.variants.map((x) => x.renderSessionId)).size, 4);
+assert.equal(
+  new Set(manifest.variants.map((x) => x.postRenderReviewSessionId)).size,
+  4,
+);
+assert.equal(new Set(manifest.variants.map((x) => x.pngChecksum)).size, 4);
+assert(!JSON.stringify(manifest).includes("backingRef"));
 assert.deepEqual(
   inspectProductionZip(
     (await artifactA.get(session.artifact.backingRef, "export-project"))!,

@@ -355,6 +355,46 @@ assert.equal(
   2,
   "U a new image in the same project is independently analyzable",
 );
+const recoveryStore = new InMemoryBudgetStore(),
+  recoveryProvider = new MockAIProvider(() => ({ safeResult: "paid-once" })),
+  recoveryRequest = { ...request, projectId: "paid-recovery" };
+const firstExecutor = new BudgetedAIExecutor(
+  recoveryProvider,
+  recoveryStore,
+  0.75,
+  createLedger("paid-recovery"),
+  Number.POSITIVE_INFINITY,
+  { safetyFactor: 1 },
+);
+const paidResult = await firstExecutor.execute<{ safeResult: string }>(
+  recoveryRequest,
+  { inputTokens: 100, outputTokens: 10 },
+);
+await assert.rejects(async () => {
+  throw new Error("workflow checkpoint failed");
+});
+const retryExecutor = new BudgetedAIExecutor(
+  recoveryProvider,
+  recoveryStore,
+  0.75,
+  (await recoveryStore.getProject("paid-recovery"))!,
+  Number.POSITIVE_INFINITY,
+  { safetyFactor: 1 },
+);
+const recoveredResult = await retryExecutor.execute<{ safeResult: string }>(
+  recoveryRequest,
+  { inputTokens: 100, outputTokens: 10 },
+);
+assert.equal(
+  recoveryProvider.getCallCount(),
+  1,
+  "V checkpoint retry reuses durable paid result without provider spend",
+);
+assert.deepEqual(
+  recoveredResult.data,
+  paidResult.data,
+  "W recovered provider result is byte-equivalent structured data",
+);
 console.log(
   "Durable budget validation passed: caps, semantic SHA-256 operation identity, typed duplicate conflicts, concurrency, reference switching and privacy.",
 );

@@ -15,6 +15,7 @@ import type {
 } from "../types.js";
 import { AITimeoutError } from "../providers/errors.js";
 import type { VisualInput } from "../../../domain/visual-forensics/index.js";
+import { assertMetadataOnly } from "../../../domain/project-persistence/index.js";
 
 const visualForensicsPasses = new Set<AIStructuredRequest["pass"]>([
   "raw_observation",
@@ -122,14 +123,37 @@ export class BudgetedAIExecutor {
         request.pass === "sol_critic"
           ? "senior_critic"
           : (this.options.stage ?? stageFor(request.pass)),
-      operationId = stableOperationId(request, stage),
-      reservation = await this.coordinator.reserve({
-        projectId: request.projectId,
-        stage,
-        estimatedCostUsd,
-        stageLimitUsd: this.options.stageLimitUsd,
-        operationId,
-      });
+      operationId = stableOperationId(request, stage);
+    const recovered =
+      await this.coordinator.budgetStore.getOperationResult(operationId);
+    if (recovered) {
+      if (recovered.projectId !== request.projectId)
+        throw new Error("AI operation result project mismatch.");
+      if (!recovered.budgetCommitted) {
+        this.ledger = await this.coordinator.commit(
+          recovered.reservationId,
+          recovered.modelCall,
+        );
+        await this.coordinator.budgetStore.saveOperationResult({
+          ...recovered,
+          budgetCommitted: true,
+        });
+      } else
+        this.ledger =
+          (await this.coordinator.ledger(request.projectId)) ?? this.ledger;
+      return structuredClone(recovered.response) as AIStructuredResponse<T>;
+    }
+    const sinkHealth = await this.coordinator.budgetStore.health();
+    if (sinkHealth.status !== "ok" || !sinkHealth.atomicReservations)
+      throw new Error("AI durable result sink is unavailable.");
+    const reservation = await this.coordinator.reserve({
+      projectId: request.projectId,
+      stage,
+      estimatedCostUsd,
+      stageLimitUsd: this.options.stageLimitUsd,
+      operationId,
+    });
+    let providerCompleted = false;
     try {
       const response = await this.provider.generateStructured<T>(request),
         costUsd = calculateActualCost(response.model, response.usage),
@@ -149,13 +173,44 @@ export class BudgetedAIExecutor {
           stage,
           operationId,
         };
+      providerCompleted = true;
+      assertMetadataOnly(response.data);
+      const resultFingerprint = sha256(
+        JSON.stringify(canonical(response.data)),
+      );
+      await this.coordinator.budgetStore.saveOperationResult({
+        operationId,
+        projectId: request.projectId,
+        status: "succeeded",
+        response: response as AIStructuredResponse<unknown>,
+        resultFingerprint,
+        providerRequestId: response.requestId,
+        actualCostUsd: costUsd,
+        reservationId: reservation.reservationId,
+        modelCall: call,
+        budgetCommitted: false,
+        createdAt: new Date().toISOString(),
+      });
       this.ledger = await this.coordinator.commit(
         reservation.reservationId,
         call,
       );
+      await this.coordinator.budgetStore.saveOperationResult({
+        operationId,
+        projectId: request.projectId,
+        status: "succeeded",
+        response: response as AIStructuredResponse<unknown>,
+        resultFingerprint,
+        providerRequestId: response.requestId,
+        actualCostUsd: costUsd,
+        reservationId: reservation.reservationId,
+        modelCall: call,
+        budgetCommitted: true,
+        createdAt: new Date().toISOString(),
+      });
       return response;
     } catch (error) {
-      if (error instanceof AITimeoutError)
+      if (providerCompleted || error instanceof AITimeoutError)
         await this.coordinator.resolveUnknown(reservation.reservationId);
       else await this.coordinator.release(reservation.reservationId);
       throw error;

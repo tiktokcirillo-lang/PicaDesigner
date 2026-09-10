@@ -4,6 +4,7 @@ import {
 } from "../../providers/errors.js";
 import type {
   AIModelCall,
+  AIOperationResult,
   AIStage,
   AIMonthlyBudget,
   BudgetReservation,
@@ -25,6 +26,7 @@ export class InMemoryBudgetStore implements BudgetStore {
   private readonly projects = new Map<string, ProjectCostLedger>();
   private readonly reservations = new Map<string, BudgetReservation>();
   private readonly operations = new Map<string, string>();
+  private readonly operationResults = new Map<string, AIOperationResult>();
   constructor(private readonly now: () => number = () => Date.now()) {}
   private expire() {
     const instant = this.now();
@@ -152,6 +154,11 @@ export class InMemoryBudgetStore implements BudgetStore {
   }
   async commit(reservationId: string, call: AIModelCall) {
     const reservation = this.reservations.get(reservationId);
+    if (reservation?.status === "committed")
+      return structuredClone(
+        this.projects.get(reservation.projectId) ??
+          createLedger(reservation.projectId),
+      );
     if (!reservation || reservation.status !== "reserved")
       throw new Error("Budget reservation is not committable.");
     const ledger =
@@ -179,6 +186,13 @@ export class InMemoryBudgetStore implements BudgetStore {
   async resolveUnknown(reservationId: string) {
     const value = this.reservations.get(reservationId);
     if (value?.status === "reserved") value.status = "unknown_provider_outcome";
+  }
+  async getOperationResult(operationId: string) {
+    const value = this.operationResults.get(operationId);
+    return value ? structuredClone(value) : undefined;
+  }
+  async saveOperationResult(result: AIOperationResult) {
+    this.operationResults.set(result.operationId, structuredClone(result));
   }
   async getUsageSnapshot(
     projectId: string,

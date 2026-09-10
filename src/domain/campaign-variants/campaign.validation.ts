@@ -8,6 +8,7 @@ import {
   assertNativeLayouts,
   createCampaignFamily,
   deriveFamilyApproval,
+  evaluateCampaignBudgetPreflight,
   type CampaignInvariantSet,
 } from "./index.js";
 const invariants: CampaignInvariantSet = {
@@ -114,6 +115,42 @@ const blocked = createCampaignFamily({
   hardCapUsd: 0.75,
 });
 assert.equal(blocked.status, "blocked");
+const normalBudget = evaluateCampaignBudgetPreflight({
+  actualSpentUsd: 0.2,
+  remainingHardCapUsd: 0.55,
+  monthlyRemainingUsd: 10,
+  remainingVariants: 4,
+  reviewCostUsd: 0.052,
+  qaCostUsd: 0.06,
+  imageCostUsd: 0.22,
+  verificationCostUsd: 0.06,
+  hasResolvedSourceAsset: true,
+  hasReusableGeneratedAsset: false,
+});
+assert(Math.abs(normalBudget.estimatedMandatoryRemaining - 0.448) < 1e-12);
+assert(
+  normalBudget.allowed,
+  "standard reference + creative + reused assets + four reviews/QAs fits hard cap",
+);
+assert.equal(normalBudget.conditionalReserve, 0.06);
+const correctionBlocked = evaluateCampaignBudgetPreflight({
+  actualSpentUsd: 0.7,
+  remainingHardCapUsd: 0.05,
+  monthlyRemainingUsd: 10,
+  remainingVariants: 0,
+  reviewCostUsd: 0.052,
+  qaCostUsd: 0.06,
+  imageCostUsd: 0.22,
+  verificationCostUsd: 0.06,
+  hasResolvedSourceAsset: true,
+  hasReusableGeneratedAsset: true,
+  correctionRequired: true,
+});
+assert.equal(
+  correctionBlocked.allowed,
+  false,
+  "conditional correction is blocked without discarding prior work",
+);
 console.log(
   "Campaign validation passed: canonical four formats, dimensions, native-layout gate, 4/4 approval and hard-cap preflight.",
 );

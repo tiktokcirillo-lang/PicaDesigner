@@ -1,6 +1,7 @@
 import { createHash, randomUUID } from "node:crypto";
 import {
   assertMetadataOnly,
+  PersistenceUnavailableError,
   OptimisticConcurrencyError,
   PROJECT_PERSISTENCE_SCHEMA_VERSION,
   ProductionAuthorityPersistenceError,
@@ -56,7 +57,7 @@ export class MockDurableProjectRepository implements ProjectPersistenceRepositor
   constructor(private readonly db: MockDurableDatabase) {}
   private ready() {
     if (!this.db.available)
-      throw new ProductionAuthorityPersistenceError(
+      throw new PersistenceUnavailableError(
         "Durable project database is unavailable.",
       );
   }

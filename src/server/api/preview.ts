@@ -16,7 +16,10 @@ export const createPreviewRouter = () => {
         return res
           .status(400)
           .json({ error: "Preview input must be resolved by the server." });
-      let variantAuthorityId: string | undefined;
+      let variantAuthorityId: string | undefined,
+        variantPreview:
+          | import("../../domain/campaign-variants/index.js").CampaignVariant
+          | undefined;
       if (req.query.familyId || req.query.formatId) {
         if (
           typeof req.query.familyId !== "string" ||
@@ -32,28 +35,36 @@ export const createPreviewRouter = () => {
           variant = family?.variants.find(
             (v) => v.formatId === req.query.formatId,
           );
-        if (!family || !variant?.productionAuthorityId)
+        if (
+          !family ||
+          (!variant?.productionAuthorityId && !variant?.previewRenderSession)
+        )
           return res
             .status(404)
             .json({ error: "Campaign variant preview is unavailable." });
         variantAuthorityId = variant.productionAuthorityId;
+        variantPreview = variant;
       }
       const authority =
-        await applicationProjectRepository.getProductionAuthority(
-          req.params.projectId,
-          variantAuthorityId,
-        );
+        variantPreview && !variantAuthorityId
+          ? undefined
+          : await applicationProjectRepository.getProductionAuthority(
+              req.params.projectId,
+              variantAuthorityId,
+            );
       const workflow = await applicationProjectRepository.getLatestWorkflow(
         req.params.projectId,
       );
       const render: RenderSession | undefined =
         authority?.visualApprovedPackage.renderSession ??
+        variantPreview?.previewRenderSession ??
         (!variantAuthorityId
           ? (workflow.find((x) => x.stage === "render_session")?.payload as
               RenderSession | undefined)
           : undefined);
       const assets: ImageAssetSession | undefined =
         authority?.visualApprovedPackage.generatedAssetSession ??
+        variantPreview?.previewImageAssetSession ??
         (!variantAuthorityId
           ? (workflow.find((x) => x.stage === "image_asset_session")
               ?.payload as ImageAssetSession | undefined)
@@ -89,6 +100,10 @@ export const createPreviewRouter = () => {
       res.setHeader("Content-Type", "image/png");
       res.setHeader("Cache-Control", "private, max-age=60");
       res.setHeader("ETag", `\"${etag}\"`);
+      res.setHeader(
+        "X-PicaDesigner-Preview-Authority",
+        authority ? "production" : "non-authoritative",
+      );
       return res.send(Buffer.from(png));
     } catch {
       return res.status(409).json({

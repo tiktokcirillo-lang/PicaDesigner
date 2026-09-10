@@ -9,6 +9,8 @@ import {
   createArtDirectorReview,
   OpenAISeniorArtDirectorCritic,
 } from "../../application/art-director-review/index.js";
+import { MockSeniorArtDirectorCritic } from "../../domain/art-director-review/index.js";
+import { resolvePicaDesignerProviderMode } from "../../infrastructure/ai/provider-mode.js";
 import { createRenderSession } from "../../application/render-engine/index.js";
 import { generateRequiredAssets } from "../../application/image-assets/index.js";
 import { type CampaignVariantEngineAdapters } from "../../application/campaign-variants/index.js";
@@ -32,10 +34,15 @@ import {
   createCompositeAssetStore,
   applicationProjectSourceAssetStore,
 } from "../../infrastructure/source-assets/index.js";
+import { assertPaidAISinkReadiness } from "./ai-readiness.js";
 export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEngineAdapters> {
+  await assertPaidAISinkReadiness();
   const config = loadOpenAIConfig(),
-    mockQa = (process.env.AI_VISUAL_QA_PROVIDER ?? "openai") === "mock",
-    mockImage = (process.env.AI_IMAGE_PROVIDER ?? "openai") === "mock",
+    e2eMock = resolvePicaDesignerProviderMode() === "mock",
+    mockQa =
+      e2eMock || (process.env.AI_VISUAL_QA_PROVIDER ?? "openai") === "mock",
+    mockImage =
+      e2eMock || (process.env.AI_IMAGE_PROVIDER ?? "openai") === "mock",
     coordinator = new ProjectAIBudgetCoordinator(applicationBudgetStore, {
       projectLimitUsd: config.maxProjectCostUsd,
       monthlyLimitUsd: config.monthlyBudgetUsd,
@@ -58,27 +65,28 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
       const ledger =
           (await applicationBudgetStore.getProject(projectId)) ??
           createLedger(projectId),
-        executor = new BudgetedAIExecutor(
-          new OpenAIProvider(config),
-          applicationBudgetStore,
-          config.maxProjectCostUsd,
-          ledger,
-          Number.POSITIVE_INFINITY,
-          {
-            monthlyLimitUsd: config.monthlyBudgetUsd,
-            safetyFactor: config.budgetReservationSafetyFactor,
-            ttlSeconds: config.budgetReservationTtlSeconds,
-            stage: "senior_critic",
-            stageLimitUsd: Math.min(
+        executor = e2eMock
+          ? undefined
+          : new BudgetedAIExecutor(
+              new OpenAIProvider(config),
+              applicationBudgetStore,
               config.maxProjectCostUsd,
-              config.seniorCriticMaxUsd * 2,
+              ledger,
+              Number.POSITIVE_INFINITY,
+              {
+                monthlyLimitUsd: config.monthlyBudgetUsd,
+                safetyFactor: config.budgetReservationSafetyFactor,
+                ttlSeconds: config.budgetReservationTtlSeconds,
+                stage: "senior_critic",
+                stageLimitUsd: Math.min(
+                  config.maxProjectCostUsd,
+                  config.seniorCriticMaxUsd * 2,
+                ),
+              },
             ),
-          },
-        ),
-        critic = new OpenAISeniorArtDirectorCritic(
-          executor,
-          config.forensicsModel,
-        );
+        critic = e2eMock
+          ? new MockSeniorArtDirectorCritic()
+          : new OpenAISeniorArtDirectorCritic(executor!, config.forensicsModel);
       return createArtDirectorReview(
         {
           projectId,
@@ -241,6 +249,8 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
       );
     },
     persistAuthority: async ({ family, variant, qa }) => {
+      if (e2eMock && process.env.NODE_ENV === "production")
+        throw new Error("Mock output cannot become production authority.");
       const current = await applicationProjectRepository.getProject(
         family.projectId,
       );

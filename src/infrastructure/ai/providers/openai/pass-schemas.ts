@@ -1,69 +1,742 @@
-import type {AnalyticalPassId} from '../../../../domain/visual-forensics/index.js';
+import type { AnalyticalPassId } from "../../../../domain/visual-forensics/index.js";
 
 type JSONSchema = Record<string, unknown>;
-const normalized = {type: 'number', minimum: 0, maximum: 1} as const;
-const nullable = (schema: JSONSchema): JSONSchema => ({anyOf: [schema, {type: 'null'}]});
-const object = (properties: Record<string, JSONSchema>, required = Object.keys(properties)): JSONSchema => ({type: 'object', additionalProperties: false, properties, required});
-const stringArray = {type: 'array', items: {type: 'string'}} as const;
-const point = object({x: normalized, y: normalized});
-const box = object({x: normalized, y: normalized, width: normalized, height: normalized});
-const edges = object({top: normalized, right: normalized, bottom: normalized, left: normalized});
-const measurement = object({kind: {type: 'string', enum: ['normalizedDistance', 'angle', 'areaRatio', 'relativeScale', 'luminanceDifference', 'colorDistance', 'alignmentDeviation', 'spacingRatio', 'edgeDistance', 'overlapRatio']}, value: {type: 'number'}, unit: {type: 'string', enum: ['normalized', 'degrees', 'ratio', 'delta_e', 'relative']}, confidence: normalized, method: nullable({type: 'string', enum: ['estimated', 'calculated', 'provider_supplied']})});
-const evidence = object({observation: {type: 'string'}, region: nullable(box), confidence: normalized, inferenceLevel: {type: 'string', enum: ['observed', 'strongly_inferred', 'speculative']}});
-const exclusionItem = object({exclude: {type: 'boolean'}, descriptions: nullable(stringArray), reason: nullable({type: 'string'})});
-const semanticExclusions = object(Object.fromEntries(['humanIdentity', 'faces', 'literalPeople', 'literalProducts', 'literalBrands', 'writtenText', 'logos', 'specificLocations', 'specificObjects', 'narrativeMeaning'].map((key) => [key, exclusionItem])));
+const normalized = { type: "number", minimum: 0, maximum: 1 } as const;
+const nullable = (schema: JSONSchema): JSONSchema => ({
+  anyOf: [schema, { type: "null" }],
+});
+const object = (
+  properties: Record<string, JSONSchema>,
+  required = Object.keys(properties),
+): JSONSchema => ({
+  type: "object",
+  additionalProperties: false,
+  properties,
+  required,
+});
+const stringArray = { type: "array", items: { type: "string" } } as const;
+const point = object({ x: normalized, y: normalized });
+const box = object({
+  x: normalized,
+  y: normalized,
+  width: normalized,
+  height: normalized,
+});
+const edges = object({
+  top: normalized,
+  right: normalized,
+  bottom: normalized,
+  left: normalized,
+});
+const measurement = object({
+  kind: {
+    type: "string",
+    enum: [
+      "normalizedDistance",
+      "angle",
+      "areaRatio",
+      "relativeScale",
+      "luminanceDifference",
+      "colorDistance",
+      "alignmentDeviation",
+      "spacingRatio",
+      "edgeDistance",
+      "overlapRatio",
+    ],
+  },
+  value: { type: "number" },
+  unit: {
+    type: "string",
+    enum: ["normalized", "degrees", "ratio", "delta_e", "relative"],
+  },
+  confidence: normalized,
+  method: nullable({
+    type: "string",
+    enum: ["estimated", "calculated", "provider_supplied"],
+  }),
+});
+const evidence = object({
+  observation: { type: "string" },
+  region: nullable(box),
+  confidence: normalized,
+  inferenceLevel: {
+    type: "string",
+    enum: ["observed", "strongly_inferred", "speculative"],
+  },
+});
+const exclusionItem = object({
+  exclude: { type: "boolean" },
+  descriptions: nullable(stringArray),
+  reason: nullable({ type: "string" }),
+});
+const semanticExclusions = object(
+  Object.fromEntries(
+    [
+      "humanIdentity",
+      "faces",
+      "literalPeople",
+      "literalProducts",
+      "literalBrands",
+      "writtenText",
+      "logos",
+      "specificLocations",
+      "specificObjects",
+      "narrativeMeaning",
+    ].map((key) => [key, exclusionItem]),
+  ),
+);
 
-const canvas = object({width: {type: 'number', exclusiveMinimum: 0}, height: {type: 'number', exclusiveMinimum: 0}, aspectRatio: {type: 'number', exclusiveMinimum: 0}, orientation: {type: 'string', enum: ['portrait', 'landscape', 'square']}, estimatedSafeArea: nullable(box), visualCenter: point, opticalCenter: object({point, confidence: normalized, evidenceIds: stringArray})});
-const observationDomain = {type: 'string', enum: ['composition', 'visual_hierarchy', 'grid', 'spacing', 'scale', 'typography', 'color', 'lighting', 'photography', 'materials_and_finish', 'texture', 'geometry', 'depth', 'gestalt', 'brand_language', 'visual_history_and_movements', 'canvas', 'relationships', 'semantic', 'anti_ai']} as const;
-const observation = object({id: {type: 'string'}, domain: observationDomain, observation: {type: 'string'}, region: nullable(box), confidence: normalized, inferenceLevel: {type: 'string', const: 'observed'}, measurement: nullable(measurement), relatedRegionIds: nullable(stringArray)});
-const region = object({id: {type: 'string'}, type: {type: 'string', enum: ['background', 'foreground', 'midground', 'text', 'graphic', 'photo', 'object', 'shape', 'logo', 'negative_space', 'texture', 'unknown']}, boundingBox: box, areaRatio: normalized, centroid: point, visualWeight: normalized, salience: normalized, edgeProximity: edges, contrastAgainstEnvironment: normalized, confidence: normalized, evidenceIds: nullable(stringArray)});
-const semanticObservation = object({id: {type: 'string'}, category: {type: 'string', enum: ['person', 'face', 'product', 'brand', 'logo', 'text_content', 'location', 'object', 'scene', 'narrative']}, description: {type: 'string'}, confidence: normalized, region: nullable(box), relatedRegionIds: nullable(stringArray)});
+const canvas = object({
+  width: { type: "number", exclusiveMinimum: 0 },
+  height: { type: "number", exclusiveMinimum: 0 },
+  aspectRatio: { type: "number", exclusiveMinimum: 0 },
+  orientation: { type: "string", enum: ["portrait", "landscape", "square"] },
+  estimatedSafeArea: nullable(box),
+  visualCenter: point,
+  opticalCenter: object({
+    point,
+    confidence: normalized,
+    evidenceIds: stringArray,
+  }),
+});
+const observationDomain = {
+  type: "string",
+  enum: [
+    "composition",
+    "visual_hierarchy",
+    "grid",
+    "spacing",
+    "scale",
+    "typography",
+    "color",
+    "lighting",
+    "photography",
+    "materials_and_finish",
+    "texture",
+    "geometry",
+    "depth",
+    "gestalt",
+    "brand_language",
+    "visual_history_and_movements",
+    "canvas",
+    "relationships",
+    "semantic",
+    "anti_ai",
+  ],
+} as const;
+const observation = object({
+  id: { type: "string" },
+  domain: observationDomain,
+  observation: { type: "string" },
+  region: nullable(box),
+  confidence: normalized,
+  inferenceLevel: { type: "string", const: "observed" },
+  measurement: nullable(measurement),
+  relatedRegionIds: nullable(stringArray),
+});
+const region = object({
+  id: { type: "string" },
+  type: {
+    type: "string",
+    enum: [
+      "background",
+      "foreground",
+      "midground",
+      "text",
+      "graphic",
+      "photo",
+      "object",
+      "shape",
+      "logo",
+      "negative_space",
+      "texture",
+      "unknown",
+    ],
+  },
+  boundingBox: box,
+  areaRatio: normalized,
+  centroid: point,
+  visualWeight: normalized,
+  salience: normalized,
+  edgeProximity: edges,
+  contrastAgainstEnvironment: normalized,
+  confidence: normalized,
+  evidenceIds: nullable(stringArray),
+});
+const semanticObservation = object({
+  id: { type: "string" },
+  category: {
+    type: "string",
+    enum: [
+      "person",
+      "face",
+      "product",
+      "brand",
+      "logo",
+      "text_content",
+      "location",
+      "object",
+      "scene",
+      "narrative",
+    ],
+  },
+  description: { type: "string" },
+  confidence: normalized,
+  region: nullable(box),
+  relatedRegionIds: nullable(stringArray),
+});
 
-export interface RawObservationPassOutput {canvas: unknown; observations: unknown[]; regions: unknown[]; semanticContent: unknown; semanticExclusions: unknown}
-export const RAW_OBSERVATION_PASS_SCHEMA = object({canvas, observations: {type: 'array', items: observation}, regions: {type: 'array', items: region}, semanticContent: object({semanticObservations: {type: 'array', items: semanticObservation}, excludedObservationIds: stringArray, policy: semanticExclusions}), semanticExclusions});
+export interface RawObservationPassOutput {
+  canvas: unknown;
+  observations: unknown[];
+  regions: unknown[];
+  semanticContent: unknown;
+  semanticExclusions: unknown;
+}
+export const RAW_OBSERVATION_PASS_SCHEMA = object({
+  canvas,
+  observations: { type: "array", items: observation },
+  regions: { type: "array", items: region },
+  semanticContent: object({
+    semanticObservations: { type: "array", items: semanticObservation },
+    excludedObservationIds: stringArray,
+    policy: semanticExclusions,
+  }),
+  semanticExclusions,
+});
 
-const relationship = object({id: {type: 'string'}, sourceRegionId: {type: 'string'}, targetRegionId: {type: 'string'}, relationship: {type: 'string', enum: ['alignment', 'proximity', 'overlap', 'containment', 'repetition', 'similarity', 'contrast', 'continuation', 'direction', 'scale_difference', 'spacing', 'grouping', 'occlusion']}, strength: normalized, evidenceIds: stringArray, evidence: {type: 'array', items: evidence}, confidence: normalized, measurement: nullable(measurement)});
-export interface SpatialRelationshipsPassOutput {relationships: unknown[]}
-export const SPATIAL_RELATIONSHIPS_PASS_SCHEMA = object({relationships: {type: 'array', items: relationship}});
+const relationship = object({
+  id: { type: "string" },
+  sourceRegionId: { type: "string" },
+  targetRegionId: { type: "string" },
+  relationship: {
+    type: "string",
+    enum: [
+      "alignment",
+      "proximity",
+      "overlap",
+      "containment",
+      "repetition",
+      "similarity",
+      "contrast",
+      "continuation",
+      "direction",
+      "scale_difference",
+      "spacing",
+      "grouping",
+      "occlusion",
+    ],
+  },
+  strength: normalized,
+  evidenceIds: stringArray,
+  evidence: { type: "array", items: evidence },
+  confidence: normalized,
+  measurement: nullable(measurement),
+});
+export interface SpatialRelationshipsPassOutput {
+  relationships: unknown[];
+}
+export const SPATIAL_RELATIONSHIPS_PASS_SCHEMA = object({
+  relationships: { type: "array", items: relationship },
+});
 
-const weightMap = object(Object.fromEntries(['topLeft', 'topCenter', 'topRight', 'middleLeft', 'center', 'middleRight', 'bottomLeft', 'bottomCenter', 'bottomRight'].map((key) => [key, normalized])));
-const hierarchyFactor = object({factor: {type: 'string', enum: ['scale', 'contrast', 'isolation', 'position', 'color', 'sharpness', 'depth', 'semantic_salience']}, contribution: normalized, confidence: normalized, evidenceIds: stringArray});
-const hierarchyFocus = object({regionId: {type: 'string'}, level: {type: 'string', enum: ['primary', 'secondary', 'tertiary']}, factors: {type: 'array', items: hierarchyFactor}, score: normalized, confidence: normalized, explanation: {type: 'string'}});
-const readingFlow = object({entryPoint: nullable({type: 'string'}), attentionSequence: stringArray, transitions: {type: 'array', items: object({fromRegionId: {type: 'string'}, toRegionId: {type: 'string'}, strength: normalized, evidenceIds: stringArray})}, exitPoint: nullable({type: 'string'}), readingPattern: {type: 'string', enum: ['z_pattern', 'f_pattern', 'radial', 'linear', 'custom', 'mixed', 'uncertain']}, confidence: normalized, evidenceIds: stringArray});
-const composition = object({symmetryScore: normalized, asymmetryStrength: normalized, balance: {type: 'string', enum: ['symmetric', 'asymmetric', 'radial', 'dynamic', 'ambiguous']}, balanceConfidence: normalized, visualCenterOfGravity: point, visualMassDistribution: weightMap, directionalFlow: {type: 'array', items: {type: 'string', enum: ['up', 'down', 'left', 'right', 'inward', 'outward', 'mixed', 'none']}}, edgeTension: edges, framing: stringArray, cropping: {type: 'string', enum: ['none', 'conservative', 'intentional', 'aggressive', 'uncertain']}, overlapStrength: normalized, layeringStrength: normalized, focalRegionIds: stringArray, evidenceIds: stringArray});
-const hierarchy = object({primaryFocus: nullable(hierarchyFocus), secondaryFocus: {type: 'array', items: hierarchyFocus}, tertiaryFocus: {type: 'array', items: hierarchyFocus}, readingFlow, clarity: normalized, evidenceIds: stringArray});
-const negativeSpace = object({negativeSpaceRatio: normalized, largestNegativeRegionId: nullable({type: 'string'}), distribution: {type: 'string', enum: ['central', 'peripheral', 'balanced', 'top_heavy', 'bottom_heavy', 'left_heavy', 'right_heavy', 'fragmented', 'uncertain']}, activeRatio: normalized, passiveRatio: normalized, purposePotential: normalized, balanceContribution: normalized, textPlacementPotential: normalized, breathingRoom: normalized, edgePressure: edges, confidence: normalized, evidenceIds: stringArray});
-const spacing = object({negativeSpace, alignmentRhythm: normalized, spacingConsistency: normalized, density: normalized, evidenceIds: stringArray});
-const confident = (value: JSONSchema): JSONSchema => object({value, confidence: normalized, evidenceIds: stringArray});
-const alignment = {type: 'string', enum: ['left', 'center', 'right', 'justified', 'mixed']} as const;
-const direction = {type: 'string', enum: ['up', 'down', 'left', 'right', 'inward', 'outward', 'mixed', 'none']} as const;
-const temperature = {type: 'string', enum: ['warm', 'neutral', 'cool', 'mixed']} as const;
-const typographyRegion = object({regionId: {type: 'string'}, classification: confident({type: 'string', enum: ['serif', 'sans_serif', 'slab_serif', 'display', 'script', 'monospace', 'mixed', 'unknown']}), estimatedWeight: confident({type: 'number'}), estimatedWidth: confident({type: 'string', enum: ['condensed', 'normal', 'extended', 'variable', 'unknown']}), caseBehavior: confident({type: 'string', enum: ['uppercase', 'lowercase', 'title', 'sentence', 'mixed', 'unknown']}), trackingCharacter: confident({type: 'string', enum: ['tight', 'normal', 'wide', 'mixed', 'unknown']}), leadingCharacter: confident({type: 'string', enum: ['tight', 'normal', 'open', 'mixed', 'unknown']}), lineLength: confident({type: 'number'}), numberOfLines: confident({type: 'number'}), alignment: confident(alignment), textBlockDensity: normalized, scaleRelationship: normalized, headlineBehavior: stringArray, hierarchyRole: confident({type: 'string', enum: ['headline', 'subheadline', 'body', 'caption', 'label', 'display', 'unknown']}), confidence: normalized});
-const typographyAnalysis = object({regions: {type: 'array', items: typographyRegion}, contrastStrength: normalized, hierarchyOrder: stringArray, evidenceIds: stringArray});
-const colorSample = object({id: {type: 'string'}, hex: nullable({type: 'string'}), rgb: nullable({type: 'array', minItems: 3, maxItems: 3, items: {type: 'number', minimum: 0, maximum: 255}}), estimatedCoverage: normalized, relativeLuminance: normalized, saturation: normalized, temperature, confidence: normalized, evidenceIds: stringArray});
-const colorFunction = object({sampleId: {type: 'string'}, function: {type: 'string', enum: ['dominant', 'supporting', 'accent', 'background', 'foreground', 'focal_dominance', 'separation', 'grouping', 'unknown']}, explanation: {type: 'string'}, confidence: normalized, evidenceIds: stringArray});
-const colorAnalysis = object({samples: {type: 'array', items: colorSample}, functions: {type: 'array', items: colorFunction}, contrastRelationships: {type: 'array', items: object({sourceSampleId: {type: 'string'}, targetSampleId: {type: 'string'}, strength: normalized, kind: {type: 'string', enum: ['luminance', 'hue', 'saturation', 'temperature', 'mixed']}, confidence: normalized})}, backgroundForegroundContrast: normalized, distribution: {type: 'array', items: object({regionId: {type: 'string'}, sampleIds: stringArray, coverage: normalized})}, evidenceIds: stringArray});
-const lightingAnalysis = object({lightDirection: nullable(confident(direction)), keyLightEstimate: nullable(confident({type: 'string'})), fillBehavior: nullable(confident({type: 'string', enum: ['none', 'low', 'balanced', 'strong', 'unknown']})), rimPresence: confident({type: 'boolean'}), shadowDirection: nullable(confident(direction)), shadowHardness: confident(normalized), diffusion: confident(normalized), specularBehavior: confident({type: 'string'}), ambientIllumination: confident(normalized), contrastRatioEstimate: nullable(confident({type: 'number'})), lightTemperature: confident(temperature), multipleLightSources: confident({type: 'boolean'}), uncertainty: stringArray, evidenceIds: stringArray, confidence: normalized});
-const depthAnalysis = object({foregroundRegionIds: stringArray, midgroundRegionIds: stringArray, backgroundRegionIds: stringArray, occlusionRelationshipIds: stringArray, depthCues: {type: 'array', items: object({cue: {type: 'string', enum: ['scale', 'overlap', 'blur', 'perspective', 'lighting', 'atmospheric_perspective', 'occlusion']}, sourceRegionId: nullable({type: 'string'}), targetRegionId: nullable({type: 'string'}), strength: normalized, confidence: normalized, evidenceIds: stringArray})}, focusHierarchy: stringArray, blurHierarchy: stringArray, relativeDepth: {type: 'array', items: object({regionId: {type: 'string'}, depth: normalized, confidence: normalized})}, strength: normalized, evidenceIds: stringArray});
-const materialAnalysis = {type: 'array', items: object({regionId: {type: 'string'}, roughness: confident(normalized), glossiness: confident(normalized), specularStrength: confident(normalized), translucency: confident(normalized), transparency: confident(normalized), reflectivity: confident(normalized), surfaceUniformity: confident(normalized), microTexture: confident(normalized), edgeBehavior: confident({type: 'string'}), likelyMaterial: nullable(confident({type: 'string'})), evidenceIds: stringArray, confidence: normalized})} as const;
-export interface DomainAnalysisPassOutput {compositionAnalysis: unknown; hierarchyAnalysis: unknown; spacingAnalysis: unknown; typographyAnalysis: unknown | null; colorAnalysis: unknown | null; lightingAnalysis: unknown | null; depthAnalysis: unknown | null; materialAnalysis: unknown[] | null}
-export const DOMAIN_ANALYSIS_PASS_SCHEMA = object({compositionAnalysis: composition, hierarchyAnalysis: hierarchy, spacingAnalysis: spacing, typographyAnalysis: nullable(typographyAnalysis), colorAnalysis: nullable(colorAnalysis), lightingAnalysis: nullable(lightingAnalysis), depthAnalysis: nullable(depthAnalysis), materialAnalysis: nullable(materialAnalysis)});
+const weightMap = object(
+  Object.fromEntries(
+    [
+      "topLeft",
+      "topCenter",
+      "topRight",
+      "middleLeft",
+      "center",
+      "middleRight",
+      "bottomLeft",
+      "bottomCenter",
+      "bottomRight",
+    ].map((key) => [key, normalized]),
+  ),
+);
+const hierarchyFactor = object({
+  factor: {
+    type: "string",
+    enum: [
+      "scale",
+      "contrast",
+      "isolation",
+      "position",
+      "color",
+      "sharpness",
+      "depth",
+      "semantic_salience",
+    ],
+  },
+  contribution: normalized,
+  confidence: normalized,
+  evidenceIds: stringArray,
+});
+const hierarchyFocus = object({
+  regionId: { type: "string" },
+  level: { type: "string", enum: ["primary", "secondary", "tertiary"] },
+  factors: { type: "array", items: hierarchyFactor },
+  score: normalized,
+  confidence: normalized,
+  explanation: { type: "string" },
+});
+const readingFlow = object({
+  entryPoint: nullable({ type: "string" }),
+  attentionSequence: stringArray,
+  transitions: {
+    type: "array",
+    items: object({
+      fromRegionId: { type: "string" },
+      toRegionId: { type: "string" },
+      strength: normalized,
+      evidenceIds: stringArray,
+    }),
+  },
+  exitPoint: nullable({ type: "string" }),
+  readingPattern: {
+    type: "string",
+    enum: [
+      "z_pattern",
+      "f_pattern",
+      "radial",
+      "linear",
+      "custom",
+      "mixed",
+      "uncertain",
+    ],
+  },
+  confidence: normalized,
+  evidenceIds: stringArray,
+});
+const composition = object({
+  symmetryScore: normalized,
+  asymmetryStrength: normalized,
+  balance: {
+    type: "string",
+    enum: ["symmetric", "asymmetric", "radial", "dynamic", "ambiguous"],
+  },
+  balanceConfidence: normalized,
+  visualCenterOfGravity: point,
+  visualMassDistribution: weightMap,
+  directionalFlow: {
+    type: "array",
+    items: {
+      type: "string",
+      enum: [
+        "up",
+        "down",
+        "left",
+        "right",
+        "inward",
+        "outward",
+        "mixed",
+        "none",
+      ],
+    },
+  },
+  edgeTension: edges,
+  framing: stringArray,
+  cropping: {
+    type: "string",
+    enum: ["none", "conservative", "intentional", "aggressive", "uncertain"],
+  },
+  overlapStrength: normalized,
+  layeringStrength: normalized,
+  focalRegionIds: stringArray,
+  evidenceIds: stringArray,
+});
+const hierarchy = object({
+  primaryFocus: nullable(hierarchyFocus),
+  secondaryFocus: { type: "array", items: hierarchyFocus },
+  tertiaryFocus: { type: "array", items: hierarchyFocus },
+  readingFlow,
+  clarity: normalized,
+  evidenceIds: stringArray,
+});
+const negativeSpace = object({
+  negativeSpaceRatio: normalized,
+  largestNegativeRegionId: nullable({ type: "string" }),
+  distribution: {
+    type: "string",
+    enum: [
+      "central",
+      "peripheral",
+      "balanced",
+      "top_heavy",
+      "bottom_heavy",
+      "left_heavy",
+      "right_heavy",
+      "fragmented",
+      "uncertain",
+    ],
+  },
+  activeRatio: normalized,
+  passiveRatio: normalized,
+  purposePotential: normalized,
+  balanceContribution: normalized,
+  textPlacementPotential: normalized,
+  breathingRoom: normalized,
+  edgePressure: edges,
+  confidence: normalized,
+  evidenceIds: stringArray,
+});
+const spacing = object({
+  negativeSpace,
+  alignmentRhythm: normalized,
+  spacingConsistency: normalized,
+  density: normalized,
+  evidenceIds: stringArray,
+});
+const confident = (value: JSONSchema): JSONSchema =>
+  object({ value, confidence: normalized, evidenceIds: stringArray });
+const alignment = {
+  type: "string",
+  enum: ["left", "center", "right", "justified", "mixed"],
+} as const;
+const direction = {
+  type: "string",
+  enum: ["up", "down", "left", "right", "inward", "outward", "mixed", "none"],
+} as const;
+const temperature = {
+  type: "string",
+  enum: ["warm", "neutral", "cool", "mixed"],
+} as const;
+const typographyRegion = object({
+  regionId: { type: "string" },
+  classification: confident({
+    type: "string",
+    enum: [
+      "serif",
+      "sans_serif",
+      "slab_serif",
+      "display",
+      "script",
+      "monospace",
+      "mixed",
+      "unknown",
+    ],
+  }),
+  estimatedWeight: confident({ type: "number" }),
+  estimatedWidth: confident({
+    type: "string",
+    enum: ["condensed", "normal", "extended", "variable", "unknown"],
+  }),
+  caseBehavior: confident({
+    type: "string",
+    enum: ["uppercase", "lowercase", "title", "sentence", "mixed", "unknown"],
+  }),
+  trackingCharacter: confident({
+    type: "string",
+    enum: ["tight", "normal", "wide", "mixed", "unknown"],
+  }),
+  leadingCharacter: confident({
+    type: "string",
+    enum: ["tight", "normal", "open", "mixed", "unknown"],
+  }),
+  lineLength: confident({ type: "number" }),
+  numberOfLines: confident({ type: "number" }),
+  alignment: confident(alignment),
+  textBlockDensity: normalized,
+  scaleRelationship: normalized,
+  headlineBehavior: stringArray,
+  hierarchyRole: confident({
+    type: "string",
+    enum: [
+      "headline",
+      "subheadline",
+      "body",
+      "caption",
+      "label",
+      "display",
+      "unknown",
+    ],
+  }),
+  confidence: normalized,
+});
+const typographyAnalysis = object({
+  regions: { type: "array", items: typographyRegion },
+  contrastStrength: normalized,
+  hierarchyOrder: stringArray,
+  evidenceIds: stringArray,
+});
+const colorSample = object({
+  id: { type: "string" },
+  hex: nullable({ type: "string" }),
+  rgb: nullable({
+    type: "array",
+    minItems: 3,
+    maxItems: 3,
+    items: { type: "number", minimum: 0, maximum: 255 },
+  }),
+  estimatedCoverage: normalized,
+  relativeLuminance: normalized,
+  saturation: normalized,
+  temperature,
+  confidence: normalized,
+  evidenceIds: stringArray,
+});
+const colorFunction = object({
+  sampleId: { type: "string" },
+  function: {
+    type: "string",
+    enum: [
+      "dominant",
+      "supporting",
+      "accent",
+      "background",
+      "foreground",
+      "focal_dominance",
+      "separation",
+      "grouping",
+      "unknown",
+    ],
+  },
+  explanation: { type: "string" },
+  confidence: normalized,
+  evidenceIds: stringArray,
+});
+const colorAnalysis = object({
+  samples: { type: "array", items: colorSample },
+  functions: { type: "array", items: colorFunction },
+  contrastRelationships: {
+    type: "array",
+    items: object({
+      sourceSampleId: { type: "string" },
+      targetSampleId: { type: "string" },
+      strength: normalized,
+      kind: {
+        type: "string",
+        enum: ["luminance", "hue", "saturation", "temperature", "mixed"],
+      },
+      confidence: normalized,
+    }),
+  },
+  backgroundForegroundContrast: normalized,
+  distribution: {
+    type: "array",
+    items: object({
+      regionId: { type: "string" },
+      sampleIds: stringArray,
+      coverage: normalized,
+    }),
+  },
+  evidenceIds: stringArray,
+});
+const lightingAnalysis = object({
+  lightDirection: nullable(confident(direction)),
+  keyLightEstimate: nullable(confident({ type: "string" })),
+  fillBehavior: nullable(
+    confident({
+      type: "string",
+      enum: ["none", "low", "balanced", "strong", "unknown"],
+    }),
+  ),
+  rimPresence: confident({ type: "boolean" }),
+  shadowDirection: nullable(confident(direction)),
+  shadowHardness: confident(normalized),
+  diffusion: confident(normalized),
+  specularBehavior: confident({ type: "string" }),
+  ambientIllumination: confident(normalized),
+  contrastRatioEstimate: nullable(confident({ type: "number" })),
+  lightTemperature: confident(temperature),
+  multipleLightSources: confident({ type: "boolean" }),
+  uncertainty: stringArray,
+  evidenceIds: stringArray,
+  confidence: normalized,
+});
+const depthAnalysis = object({
+  foregroundRegionIds: stringArray,
+  midgroundRegionIds: stringArray,
+  backgroundRegionIds: stringArray,
+  occlusionRelationshipIds: stringArray,
+  depthCues: {
+    type: "array",
+    items: object({
+      cue: {
+        type: "string",
+        enum: [
+          "scale",
+          "overlap",
+          "blur",
+          "perspective",
+          "lighting",
+          "atmospheric_perspective",
+          "occlusion",
+        ],
+      },
+      sourceRegionId: nullable({ type: "string" }),
+      targetRegionId: nullable({ type: "string" }),
+      strength: normalized,
+      confidence: normalized,
+      evidenceIds: stringArray,
+    }),
+  },
+  focusHierarchy: stringArray,
+  blurHierarchy: stringArray,
+  relativeDepth: {
+    type: "array",
+    items: object({
+      regionId: { type: "string" },
+      depth: normalized,
+      confidence: normalized,
+    }),
+  },
+  strength: normalized,
+  evidenceIds: stringArray,
+});
+const materialAnalysis = {
+  type: "array",
+  items: object({
+    regionId: { type: "string" },
+    roughness: confident(normalized),
+    glossiness: confident(normalized),
+    specularStrength: confident(normalized),
+    translucency: confident(normalized),
+    transparency: confident(normalized),
+    reflectivity: confident(normalized),
+    surfaceUniformity: confident(normalized),
+    microTexture: confident(normalized),
+    edgeBehavior: confident({ type: "string" }),
+    likelyMaterial: nullable(confident({ type: "string" })),
+    evidenceIds: stringArray,
+    confidence: normalized,
+  }),
+} as const;
+export interface DomainAnalysisPassOutput {
+  compositionAnalysis: unknown;
+  hierarchyAnalysis: unknown;
+  spacingAnalysis: unknown;
+  typographyAnalysis: unknown | null;
+  colorAnalysis: unknown | null;
+  lightingAnalysis: unknown | null;
+  depthAnalysis: unknown | null;
+  materialAnalysis: unknown[] | null;
+}
+export const DOMAIN_ANALYSIS_PASS_SCHEMA = object({
+  compositionAnalysis: composition,
+  hierarchyAnalysis: hierarchy,
+  spacingAnalysis: spacing,
+  typographyAnalysis: nullable(typographyAnalysis),
+  colorAnalysis: nullable(colorAnalysis),
+  lightingAnalysis: nullable(lightingAnalysis),
+  depthAnalysis: nullable(depthAnalysis),
+  materialAnalysis: nullable(materialAnalysis),
+});
 
-const inferredPrinciple = object({principleId: {type: 'string'}, evidenceIds: stringArray, confidence: normalized, explanation: {type: 'string'}});
-const antiAiFinding = object({signal: {type: 'string', enum: ['inconsistentLighting', 'impossibleReflection', 'overSymmetry', 'fakeDepth', 'excessiveGlow', 'arbitraryDecoration', 'hyperPerfectSurface', 'genericAITexture', 'perspectiveConflict']}, mappedKnowledgeSignalId: {type: 'string'}, evidenceIds: stringArray, confidence: normalized, severity: normalized, explanation: {type: 'string'}});
-export interface PrincipleInferencePassOutput {inferredPrinciples: unknown[]; antiAiFindings: unknown[]}
-export const PRINCIPLE_INFERENCE_PASS_SCHEMA = object({inferredPrinciples: {type: 'array', items: inferredPrinciple}, antiAiFindings: {type: 'array', items: antiAiFinding}});
+const inferredPrinciple = object({
+  principleId: { type: "string" },
+  evidenceIds: stringArray,
+  confidence: normalized,
+  explanation: { type: "string" },
+});
+const antiAiFinding = object({
+  signal: {
+    type: "string",
+    enum: [
+      "inconsistentLighting",
+      "impossibleReflection",
+      "overSymmetry",
+      "fakeDepth",
+      "excessiveGlow",
+      "arbitraryDecoration",
+      "hyperPerfectSurface",
+      "genericAITexture",
+      "perspectiveConflict",
+    ],
+  },
+  mappedKnowledgeSignalId: { type: "string" },
+  evidenceIds: stringArray,
+  confidence: normalized,
+  severity: normalized,
+  explanation: { type: "string" },
+});
+export interface PrincipleInferencePassOutput {
+  inferredPrinciples: unknown[];
+  antiAiFindings: unknown[];
+}
+export const PRINCIPLE_INFERENCE_PASS_SCHEMA = object({
+  inferredPrinciples: { type: "array", items: inferredPrinciple },
+  antiAiFindings: { type: "array", items: antiAiFinding },
+});
 
-const uncertainty = object({id: {type: 'string'}, domain: observationDomain, description: {type: 'string'}, reason: {type: 'string', enum: ['low_resolution', 'occlusion', 'ambiguous_visual_signal', 'insufficient_evidence', 'semantic_confusion', 'lighting_ambiguity', 'perspective_ambiguity', 'unknown']}, confidence: normalized, impact: {type: 'string', enum: ['low', 'medium', 'high']}, evidenceIds: nullable(stringArray)});
-const contradiction = object({id: {type: 'string'}, statements: {type: 'array', minItems: 2, items: {type: 'string'}}, evidenceIds: stringArray, severity: normalized, resolutionStatus: {type: 'string', enum: ['unresolved', 'review_required', 'resolved', 'accepted_ambiguity']}, resolution: nullable({type: 'string'})});
-const quality = object({coverage: normalized, consistency: normalized, measurementSupport: normalized, observationToInferenceRatio: normalized, speculationRisk: normalized, overall: normalized});
-export interface ConsistencyCheckPassOutput {uncertainties: unknown[]; contradictions: unknown[]; evidenceQuality: unknown; overallConfidence: number}
-export const CONSISTENCY_CHECK_PASS_SCHEMA = object({uncertainties: {type: 'array', items: uncertainty}, contradictions: {type: 'array', items: contradiction}, evidenceQuality: quality, overallConfidence: normalized});
+const uncertainty = object({
+  id: { type: "string" },
+  domain: observationDomain,
+  description: { type: "string" },
+  reason: {
+    type: "string",
+    enum: [
+      "low_resolution",
+      "occlusion",
+      "ambiguous_visual_signal",
+      "insufficient_evidence",
+      "semantic_confusion",
+      "lighting_ambiguity",
+      "perspective_ambiguity",
+      "unknown",
+    ],
+  },
+  confidence: normalized,
+  impact: { type: "string", enum: ["low", "medium", "high"] },
+  evidenceIds: nullable(stringArray),
+});
+const contradiction = object({
+  id: { type: "string" },
+  statements: { type: "array", minItems: 2, items: { type: "string" } },
+  evidenceIds: stringArray,
+  severity: normalized,
+  resolutionStatus: {
+    type: "string",
+    enum: ["unresolved", "review_required", "resolved", "accepted_ambiguity"],
+  },
+  resolution: nullable({ type: "string" }),
+});
+const quality = object({
+  coverage: normalized,
+  consistency: normalized,
+  measurementSupport: normalized,
+  observationToInferenceRatio: normalized,
+  speculationRisk: normalized,
+  overall: normalized,
+});
+export interface ConsistencyCheckPassOutput {
+  uncertainties: unknown[];
+  contradictions: unknown[];
+  evidenceQuality: unknown;
+  overallConfidence: number;
+}
+export const CONSISTENCY_CHECK_PASS_SCHEMA = object({
+  uncertainties: { type: "array", items: uncertainty },
+  contradictions: { type: "array", items: contradiction },
+  evidenceQuality: quality,
+  overallConfidence: normalized,
+});
 
-export const PASS_OUTPUT_SCHEMAS: Readonly<Record<Exclude<AnalyticalPassId, 'design_dna_mapping'>, {name: string; schema: JSONSchema}>> = {
-  raw_observation: {name: 'raw_observation_pass', schema: RAW_OBSERVATION_PASS_SCHEMA},
-  spatial_relationships: {name: 'spatial_relationships_pass', schema: SPATIAL_RELATIONSHIPS_PASS_SCHEMA},
-  domain_analysis: {name: 'domain_analysis_pass', schema: DOMAIN_ANALYSIS_PASS_SCHEMA},
-  principle_inference: {name: 'principle_inference_pass', schema: PRINCIPLE_INFERENCE_PASS_SCHEMA},
-  consistency_check: {name: 'consistency_check_pass', schema: CONSISTENCY_CHECK_PASS_SCHEMA},
+export const PASS_OUTPUT_SCHEMAS: Readonly<
+  Record<
+    Exclude<AnalyticalPassId, "design_dna_mapping">,
+    { name: string; schema: JSONSchema }
+  >
+> = {
+  raw_observation: {
+    name: "raw_observation_pass",
+    schema: RAW_OBSERVATION_PASS_SCHEMA,
+  },
+  spatial_relationships: {
+    name: "spatial_relationships_pass",
+    schema: SPATIAL_RELATIONSHIPS_PASS_SCHEMA,
+  },
+  domain_analysis: {
+    name: "domain_analysis_pass",
+    schema: DOMAIN_ANALYSIS_PASS_SCHEMA,
+  },
+  principle_inference: {
+    name: "principle_inference_pass",
+    schema: PRINCIPLE_INFERENCE_PASS_SCHEMA,
+  },
+  consistency_check: {
+    name: "consistency_check_pass",
+    schema: CONSISTENCY_CHECK_PASS_SCHEMA,
+  },
 };

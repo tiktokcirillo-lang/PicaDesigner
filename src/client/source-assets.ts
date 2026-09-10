@@ -39,7 +39,7 @@ const safeUploadError = (error: unknown, phase: SourceAssetUploadState) => {
     error instanceof Error &&
     /conflict|already exists|\b409\b/i.test(error.message);
   const code: SourceAssetUploadErrorCode = conflict
-    ? "SOURCE_UPLOAD_CONFLICT"
+    ? "SOURCE_ALREADY_RECOVERED"
     : phase === "uploading"
       ? "SOURCE_UPLOAD_FAILED"
       : "SOURCE_FINALIZE_FAILED";
@@ -170,6 +170,7 @@ export const sourceAssetErrorMessage = (error: unknown) => {
         SOURCE_INVALID_FILE: "Arquivo inválido.",
         SOURCE_UPLOAD_AUTH_FAILED: "Não foi possível autorizar o envio.",
         SOURCE_UPLOAD_FAILED: "Não foi possível enviar o arquivo.",
+        SOURCE_UPLOAD_INTERRUPTED: "Upload interrompido.",
         SOURCE_UPLOAD_CONFLICT:
           "Upload interrompido. Tente o mesmo arquivo novamente.",
         SOURCE_FINALIZE_FAILED: "Não foi possível concluir o upload.",
@@ -177,6 +178,8 @@ export const sourceAssetErrorMessage = (error: unknown) => {
         SOURCE_CHECKSUM_MISMATCH:
           "O arquivo enviado não corresponde ao esperado.",
         SOURCE_STORAGE_UNAVAILABLE: "Storage temporariamente indisponível.",
+        SOURCE_ALREADY_RECOVERED:
+          "Arquivo já existente sendo recuperado. Tente novamente.",
       } satisfies Record<SourceAssetUploadErrorCode, string>
     )[code as SourceAssetUploadErrorCode] ??
     "Não foi possível enviar o arquivo."

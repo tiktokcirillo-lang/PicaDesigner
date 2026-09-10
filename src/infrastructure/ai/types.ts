@@ -1,15 +1,45 @@
-import type {AnalysisDepth, AnalyticalPassId, VisualInput} from '../../domain/visual-forensics/index.js';
+import type {
+  AnalysisDepth,
+  AnalyticalPassId,
+  VisualInput,
+} from "../../domain/visual-forensics/index.js";
 
-export type AIProviderId = 'openai' | 'mock';
-export type AIModelRole = 'forensics' | 'critic';
-export type AIApplicationTask = 'refine_copy' | 'generate_design_spec' | 'creative_direction';
-export type AIStage = 'visual_forensics' | 'brand_intelligence' | 'creative_direction' | 'art_direction_revision' | 'design_spec' | 'senior_critic' | 'image_generation' | 'image_regeneration' | 'post_render_qa' | 'layout_intelligence' | 'other';
-export type ReasoningEffort = 'none' | 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+export type AIProviderId = "openai" | "mock";
+export type AIModelRole = "forensics" | "critic";
+export type AIApplicationTask =
+  "refine_copy" | "generate_design_spec" | "creative_direction";
+export type AIStage =
+  | "visual_forensics"
+  | "brand_intelligence"
+  | "creative_direction"
+  | "art_direction_revision"
+  | "design_spec"
+  | "senior_critic"
+  | "image_generation"
+  | "image_regeneration"
+  | "post_render_qa"
+  | "layout_intelligence"
+  | "other";
+export type ReasoningEffort =
+  "none" | "low" | "medium" | "high" | "xhigh" | "max";
 
-export interface AIUsage {inputTokens: number; cachedInputTokens: number; cacheWriteTokens: number; outputTokens: number; reasoningTokens?: number}
+export interface AIUsage {
+  inputTokens: number;
+  cachedInputTokens: number;
+  cacheWriteTokens: number;
+  outputTokens: number;
+  reasoningTokens?: number;
+}
 export interface AIStructuredRequest {
   projectId: string;
-  pass: AnalyticalPassId | 'sol_critic' | 'creative_direction_revision' | 'repair' | 'image_generation' | 'post_render_qa' | AIApplicationTask;
+  pass:
+    | AnalyticalPassId
+    | "sol_critic"
+    | "creative_direction_revision"
+    | "repair"
+    | "image_generation"
+    | "post_render_qa"
+    | AIApplicationTask;
   model: string;
   instructions: string;
   inputText: string;
@@ -22,12 +52,24 @@ export interface AIStructuredRequest {
   maxOutputTokens: number;
   repairAttempt?: boolean;
 }
-export interface AIStructuredResponse<T> {requestId: string; model: string; data: T; usage: AIUsage; durationMs: number; imageInputCount?:number}
-export interface AIProvider {readonly id: AIProviderId; generateStructured<T>(request: AIStructuredRequest): Promise<AIStructuredResponse<T>>}
+export interface AIStructuredResponse<T> {
+  requestId: string;
+  model: string;
+  data: T;
+  usage: AIUsage;
+  durationMs: number;
+  imageInputCount?: number;
+}
+export interface AIProvider {
+  readonly id: AIProviderId;
+  generateStructured<T>(
+    request: AIStructuredRequest,
+  ): Promise<AIStructuredResponse<T>>;
+}
 
 export interface AIModelCall {
   requestId: string;
-  pass: AIStructuredRequest['pass'];
+  pass: AIStructuredRequest["pass"];
   model: string;
   inputTokens: number;
   cachedInputTokens: number;
@@ -43,23 +85,123 @@ export interface AIModelCall {
   operationId?: string;
   budgetOverrun?: boolean;
   occurredAt?: string;
-  imageInputCount?:number;
+  imageInputCount?: number;
 }
-export interface ProjectCostLedger {projectId: string; startedAt: string; modelCalls: AIModelCall[]; inputTokens: number; cachedInputTokens: number; cacheWriteTokens: number; outputTokens: number; repairAttempts: number; totalCostUsd: number}
-export type BudgetStatus = 'healthy' | 'approaching_limit' | 'at_risk' | 'blocked';
-export type BudgetReservationStatus = 'reserved' | 'committed' | 'released' | 'expired' | 'unknown_provider_outcome';
-export interface BudgetReservation {reservationId:string;operationId?:string;projectId:string;month:string;stage:AIStage;estimatedMicroUsd:number;createdAt:string;expiresAt:string;status:BudgetReservationStatus}
-export interface BudgetReservationRequest {projectId:string;month:string;stage:AIStage;operationId?:string;estimatedMicroUsd:number;projectLimitMicroUsd:number;monthlyLimitMicroUsd:number;stageLimitMicroUsd?:number;ttlSeconds:number}
-export interface AIProjectBudget {limitUsd: number; targetUsd: number; spentUsd: number; estimatedRemainingUsd: number; status: BudgetStatus}
-export interface AIMonthlyBudget {month: string; limitUsd: number; spentUsd: number; remainingUsd: number; projectCount: number}
-export interface ProjectAIUsageSnapshot {projectId:string;spentUsd:number;reservedUsd:number;remainingUsd:number;monthlySpentUsd:number;monthlyReservedUsd:number;monthlyRemainingUsd:number;stages:Partial<Record<AIStage,{spentUsd:number;reservedUsd:number}>>;calls:AIModelCall[];status:BudgetStatus}
-export type EscalationStatus = 'not_needed' | 'executed' | 'disabled' | 'budget_blocked';
-export interface AIUsageResult extends AIUsage {totalCostUsd: number; targetCostUsd: number; limitCostUsd: number; modelsUsed: string[]; calls: AIModelCall[]; escalationStatus: EscalationStatus; escalationReason?: string}
+export interface ProjectCostLedger {
+  projectId: string;
+  startedAt: string;
+  modelCalls: AIModelCall[];
+  inputTokens: number;
+  cachedInputTokens: number;
+  cacheWriteTokens: number;
+  outputTokens: number;
+  repairAttempts: number;
+  totalCostUsd: number;
+}
+export interface AIOperationResult {
+  operationId: string;
+  projectId: string;
+  status: "succeeded";
+  response: AIStructuredResponse<unknown>;
+  resultFingerprint: string;
+  providerRequestId: string;
+  actualCostUsd: number;
+  reservationId: string;
+  modelCall: AIModelCall;
+  budgetCommitted: boolean;
+  createdAt: string;
+}
+export type BudgetStatus =
+  "healthy" | "approaching_limit" | "at_risk" | "blocked";
+export type BudgetReservationStatus =
+  | "reserved"
+  | "committed"
+  | "released"
+  | "expired"
+  | "unknown_provider_outcome";
+export interface BudgetReservation {
+  reservationId: string;
+  operationId?: string;
+  projectId: string;
+  month: string;
+  stage: AIStage;
+  estimatedMicroUsd: number;
+  createdAt: string;
+  expiresAt: string;
+  status: BudgetReservationStatus;
+}
+export interface BudgetReservationRequest {
+  projectId: string;
+  month: string;
+  stage: AIStage;
+  operationId?: string;
+  estimatedMicroUsd: number;
+  projectLimitMicroUsd: number;
+  monthlyLimitMicroUsd: number;
+  stageLimitMicroUsd?: number;
+  ttlSeconds: number;
+}
+export interface AIProjectBudget {
+  limitUsd: number;
+  targetUsd: number;
+  spentUsd: number;
+  estimatedRemainingUsd: number;
+  status: BudgetStatus;
+}
+export interface AIMonthlyBudget {
+  month: string;
+  limitUsd: number;
+  spentUsd: number;
+  remainingUsd: number;
+  projectCount: number;
+}
+export interface ProjectAIUsageSnapshot {
+  projectId: string;
+  spentUsd: number;
+  reservedUsd: number;
+  remainingUsd: number;
+  monthlySpentUsd: number;
+  monthlyReservedUsd: number;
+  monthlyRemainingUsd: number;
+  stages: Partial<Record<AIStage, { spentUsd: number; reservedUsd: number }>>;
+  calls: AIModelCall[];
+  status: BudgetStatus;
+}
+export type EscalationStatus =
+  "not_needed" | "executed" | "disabled" | "budget_blocked";
+export interface AIUsageResult extends AIUsage {
+  totalCostUsd: number;
+  targetCostUsd: number;
+  limitCostUsd: number;
+  modelsUsed: string[];
+  calls: AIModelCall[];
+  escalationStatus: EscalationStatus;
+  escalationReason?: string;
+}
 
 export interface AIAnalysisTelemetry {
-  requestId: string; projectId: string; provider: AIProviderId; modelsUsed: string[]; analysisDepth: AnalysisDepth;
-  passesExecuted: string[]; totalDurationMs: number; providerCalls: number; repairAttempts: number;
-  escalatedToSol: boolean; escalationReason?: string; totalInputTokens: number; totalCachedInputTokens: number; totalCacheWriteTokens: number;
-  totalOutputTokens: number; outputTokenUtilization: Array<{pass: AIModelCall['pass']; maxOutputTokens: number; actualOutputTokens: number; utilizationRatio: number}>;
-  totalCostUsd: number; budgetStatus: BudgetStatus; success: boolean;
+  requestId: string;
+  projectId: string;
+  provider: AIProviderId;
+  modelsUsed: string[];
+  analysisDepth: AnalysisDepth;
+  passesExecuted: string[];
+  totalDurationMs: number;
+  providerCalls: number;
+  repairAttempts: number;
+  escalatedToSol: boolean;
+  escalationReason?: string;
+  totalInputTokens: number;
+  totalCachedInputTokens: number;
+  totalCacheWriteTokens: number;
+  totalOutputTokens: number;
+  outputTokenUtilization: Array<{
+    pass: AIModelCall["pass"];
+    maxOutputTokens: number;
+    actualOutputTokens: number;
+    utilizationRatio: number;
+  }>;
+  totalCostUsd: number;
+  budgetStatus: BudgetStatus;
+  success: boolean;
 }

@@ -40,6 +40,10 @@ import {
 import { runDesignPipeline } from "./pipeline-controller.js";
 import { useToast } from "../primitives/Toast.js";
 import { CampaignVariantNavigator } from "../campaign/CampaignVariantNavigator.js";
+import {
+  flushWorkspaceAutosave,
+  workspaceFailureMessage,
+} from "./autosave-coordinator.js";
 const leftTabs: [WorkspaceTab, string][] = [
     ["briefing", "Briefing"],
     ["reference", "Referência"],
@@ -116,6 +120,9 @@ export function ProjectWorkspace() {
     [scene] = useState(0),
     revision = useRef(0),
     hydrated = useRef(false),
+    autosaveTimer = useRef<number | undefined>(undefined),
+    saveInFlight = useRef<Promise<void> | undefined>(undefined),
+    pipelineRunning = useRef(false),
     { notify } = useToast();
   const load = useCallback(
     async (signal?: AbortSignal) => {
@@ -151,34 +158,45 @@ export function ProjectWorkspace() {
     },
     [],
   );
-  useEffect(() => {
+  async function persistWorkspaceDraft() {
     if (!snapshot || !hydrated.current) return;
-    const timer = window.setTimeout(async () => {
-      setSaveStatus("saving");
-      try {
-        const input = toWorkspaceInput(draft),
-          fingerprint = await fingerprintWorkspaceInput(input),
-          saved = await saveDurableCheckpoint({
-            projectId,
-            versionId: snapshot.activeVersionId ?? `version:${projectId}`,
-            stage: "workspace_input",
-            operationId: `workspace_input:${fingerprint}`,
-            fingerprint,
-            expectedRevision: revision.current,
-            payload: input,
-          });
-        revision.current = saved.project.revision;
-        setSaveStatus("saved");
-      } catch (e) {
-        setSaveStatus(
-          e instanceof ApiClientError && e.status === 409
-            ? "conflict"
-            : "error",
-        );
-      }
+    setSaveStatus("saving");
+    try {
+      const input = toWorkspaceInput(draft),
+        fingerprint = await fingerprintWorkspaceInput(input),
+        saved = await saveDurableCheckpoint({
+          projectId,
+          versionId: snapshot.activeVersionId ?? `version:${projectId}`,
+          stage: "workspace_input",
+          operationId: `workspace_input:${fingerprint}`,
+          fingerprint,
+          expectedRevision: revision.current,
+          payload: input,
+        });
+      revision.current = saved.project.revision;
+      setSaveStatus("saved");
+    } catch (e) {
+      setSaveStatus(
+        e instanceof ApiClientError && e.status === 409 ? "conflict" : "error",
+      );
+      throw e;
+    }
+  }
+  useEffect(() => {
+    if (!snapshot || !hydrated.current || pipelineRunning.current) return;
+    autosaveTimer.current = window.setTimeout(() => {
+      const saving = persistWorkspaceDraft();
+      saveInFlight.current = saving;
+      saving
+        .catch(() => undefined)
+        .finally(() => {
+          if (saveInFlight.current === saving) saveInFlight.current = undefined;
+        });
     }, 1000);
-    return () => window.clearTimeout(timer);
-  }, [draft, projectId, snapshot]);
+    return () => {
+      if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+    };
+  }, [draft, projectId, snapshot, pipeline.running]);
   const format = useMemo(() => {
     try {
       return draft.formatId === "meta_ads_family"
@@ -206,7 +224,14 @@ export function ProjectWorkspace() {
             )?.renderSessionId,
           )
         : Boolean(snapshot?.workflow.render_session),
-    approved = snapshot?.latestProductionAuthority?.status === "valid";
+    approved =
+      draft.formatId === "meta_ads_family"
+        ? Boolean(
+            campaignFamily?.variants.find(
+              (variant) => variant.formatId === selectedCampaignFormat,
+            )?.productionAuthorityId,
+          )
+        : snapshot?.latestProductionAuthority?.status === "valid";
   function change(patch: Partial<WorkspaceDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
     if (snapshot?.workflow.render_session)
@@ -230,9 +255,17 @@ export function ProjectWorkspace() {
       return;
     }
     setError("");
+    pipelineRunning.current = true;
     setRightTab("pipeline");
     setPipeline((current) => ({ ...current, running: true, error: undefined }));
     try {
+      await flushWorkspaceAutosave({
+        cancelPendingTimer: () => {
+          if (autosaveTimer.current) window.clearTimeout(autosaveTimer.current);
+        },
+        pendingSave: saveInFlight.current,
+        persistCurrentDraft: persistWorkspaceDraft,
+      });
       await runDesignPipeline({
         projectId,
         revision: revision.current,
@@ -247,11 +280,10 @@ export function ProjectWorkspace() {
       });
       notify("Pipeline concluído");
       await load();
+      pipelineRunning.current = false;
     } catch (e) {
-      const message =
-        e instanceof Error
-          ? e.message
-          : "Não foi possível concluir o pipeline.";
+      pipelineRunning.current = false;
+      const message = workspaceFailureMessage(e);
       setError(message);
       setPipeline((current) => ({
         ...current,
@@ -435,8 +467,8 @@ export function ProjectWorkspace() {
                     formatId,
                   );
                   setCampaignFamily(result.family);
-                } catch {
-                  setError("Não foi possível tentar novamente esta variante.");
+                } catch (error) {
+                  setError(workspaceFailureMessage(error));
                 }
               }}
             />

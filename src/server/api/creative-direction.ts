@@ -14,25 +14,40 @@ import {
 } from "../../infrastructure/ai/providers/errors.js";
 import { loadOpenAIConfig } from "../../infrastructure/ai/providers/openai/config.js";
 import { OpenAIProvider } from "../../infrastructure/ai/providers/openai/responses.js";
+import { assertPaidAISinkReadiness } from "../services/ai-readiness.js";
+import { PersistenceUnavailableError } from "../../domain/project-persistence/index.js";
 
 const sendError = (response: Response, error: unknown) => {
   const status =
-    error instanceof AIIdempotencyConflictError
-      ? 409
-      : error instanceof AIAuthenticationError
-        ? 401
-        : error instanceof AIBudgetExceededError
-          ? 402
-          : error instanceof AIRateLimitError
-            ? 429
-            : error instanceof AITimeoutError
-              ? 504
-              : error instanceof AISchemaError
-                ? 422
-                : error instanceof AIProviderError
-                  ? 500
-                  : 500;
-  return response.status(status).json({ error: safeErrorMessage(error) });
+    error instanceof PersistenceUnavailableError
+      ? 503
+      : error instanceof AIIdempotencyConflictError
+        ? 409
+        : error instanceof AIAuthenticationError
+          ? 401
+          : error instanceof AIBudgetExceededError
+            ? 402
+            : error instanceof AIRateLimitError
+              ? 429
+              : error instanceof AITimeoutError
+                ? 504
+                : error instanceof AISchemaError
+                  ? 422
+                  : error instanceof AIProviderError
+                    ? 500
+                    : 500;
+  return response
+    .status(status)
+    .json({
+      error:
+        error instanceof PersistenceUnavailableError
+          ? "A persistência necessária para a geração está indisponível."
+          : safeErrorMessage(error),
+      code:
+        error instanceof PersistenceUnavailableError
+          ? "AI_DURABLE_SINK_UNAVAILABLE"
+          : undefined,
+    });
 };
 
 export const createCreativeDirectionRouter = (): Router => {
@@ -55,6 +70,7 @@ export const createCreativeDirectionRouter = (): Router => {
           .status(400)
           .json({ error: "format, destinationTool and tone are required" });
       const config = loadOpenAIConfig();
+      await assertPaidAISinkReadiness();
       return response.json(
         await createCreativeDirection(body as CreativeDirectionRequest, {
           config,

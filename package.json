@@ -22,6 +22,7 @@
     "persistence:cold-start-validation": "tsx src/infrastructure/project-persistence/cold-start.validation.ts",
     "workspace:validation": "tsx scripts/workspace-validation.ts",
     "workspace:test": "vitest run --environment jsdom",
+    "e2e:campaign-smoke": "tsx scripts/e2e-campaign-smoke.ts",
     "db:validate": "tsx scripts/db-validate.ts",
     "image:validation": "tsx src/domain/image-assets/image-assets.validation.ts",
     "asset-storage:validation": "tsx src/infrastructure/image-generation/asset-storage.validation.ts",

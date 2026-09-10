@@ -18,6 +18,11 @@ import {
   type CampaignInvariantSet,
 } from "../../domain/campaign-variants/index.js";
 import { CampaignVariantNavigator } from "../campaign/CampaignVariantNavigator.js";
+import {
+  flushWorkspaceAutosave,
+  workspaceFailureMessage,
+} from "./autosave-coordinator.js";
+import { ApiClientError } from "../../client/api-response.js";
 afterEach(cleanup);
 const project = {
   projectId: "project_server",
@@ -29,6 +34,40 @@ const project = {
   revision: 3,
 } as const;
 describe("workspace logic", () => {
+  it("classifies safe workflow failures", () => {
+    expect(workspaceFailureMessage(new ApiClientError("budget", 402))).toMatch(
+      /orçamento/,
+    );
+    expect(
+      workspaceFailureMessage(new ApiClientError("conflict", 409)),
+    ).toMatch(/Conflito/);
+    expect(workspaceFailureMessage(new ApiClientError("db", 503))).toMatch(
+      /persistência/,
+    );
+    expect(workspaceFailureMessage(new ApiClientError("qa", 422))).toMatch(
+      /QA/,
+    );
+  });
+  it("flushes pending autosave before generate persistence", async () => {
+    const order: string[] = [];
+    let release = () => {};
+    const pending = new Promise<void>((resolve) => {
+        release = () => {
+          order.push("autosave");
+          resolve();
+        };
+      }),
+      flushed = flushWorkspaceAutosave({
+        cancelPendingTimer: () => order.push("cancel"),
+        pendingSave: pending,
+        persistCurrentDraft: async () => {
+          order.push("current");
+        },
+      });
+    release();
+    await flushed;
+    expect(order).toEqual(["cancel", "autosave", "current"]);
+  });
   it("preserves canonical Meta context and invalidation", () => {
     expect(formatContextFor("meta_ads_square")).toEqual({
       platform: "meta",

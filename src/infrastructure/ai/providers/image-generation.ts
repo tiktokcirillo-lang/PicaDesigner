@@ -15,10 +15,10 @@ export interface ImageGenerationProvider {
 }
 
 export class UnavailableImageGenerationProvider implements ImageGenerationProvider {
-  readonly id = 'unavailable';
+  readonly id = "unavailable";
   readonly available = false;
   async generate(_input: ImageGenerationInput): Promise<ImageGenerationResult> {
-    throw new AIProviderError('Image generation is temporarily unavailable.');
+    throw new AIProviderError("Image generation is temporarily unavailable.");
   }
 }
-import {AIProviderError} from './errors.js';
+import { AIProviderError } from "./errors.js";

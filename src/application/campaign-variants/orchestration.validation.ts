@@ -191,6 +191,15 @@ assert.equal(
   3,
 );
 assert.equal(operationalDb.authorities.length, 0);
+const failedPreview = first.family.variants.find(
+  (x) => x.formatId === "meta_ads_story_reels",
+);
+assert(
+  failedPreview?.previewRenderSession?.sessionId &&
+    failedPreview.readiness.render &&
+    !failedPreview.readiness.authority,
+  "non-authoritative render preview survives as durable variant state",
+);
 const siblingCalls = [...calls.review];
 failedFormat = "";
 const retried = await runCampaignFamily(

@@ -25,6 +25,8 @@ import {
   applicationProjectSourceAssetStore,
 } from "../../infrastructure/source-assets/index.js";
 import { reconcileProjectSourceAsset } from "../../application/source-assets/index.js";
+import { assertPaidAISinkReadiness } from "../services/ai-readiness.js";
+import { PersistenceUnavailableError } from "../../domain/project-persistence/index.js";
 
 export const createVisualForensicsRouter = (): Router => {
   const router = Router();
@@ -85,6 +87,7 @@ export const createVisualForensicsRouter = (): Router => {
         return response
           .status(400)
           .json({ error: "Visual reference is required." });
+      await assertPaidAISinkReadiness();
       const config = loadOpenAIConfig();
       const provider = new OpenAIProvider(config);
       const session = await createReferenceIntelligence(
@@ -107,25 +110,38 @@ export const createVisualForensicsRouter = (): Router => {
       return response.json(session);
     } catch (error) {
       const status =
-        error instanceof UnsupportedAIInputError
-          ? 400
-          : error instanceof AIIdempotencyConflictError
-            ? 409
-            : error instanceof AIAuthenticationError
-              ? 401
-              : error instanceof AIBudgetExceededError
-                ? 402
-                : error instanceof AIRateLimitError
-                  ? 429
-                  : error instanceof AITimeoutError
-                    ? 504
-                    : error instanceof AISchemaError ||
-                        error instanceof AnalysisPipelineError
-                      ? 422
-                      : error instanceof AIProviderError
-                        ? 500
-                        : 500;
-      return response.status(status).json({ error: safeErrorMessage(error) });
+        error instanceof PersistenceUnavailableError
+          ? 503
+          : error instanceof UnsupportedAIInputError
+            ? 400
+            : error instanceof AIIdempotencyConflictError
+              ? 409
+              : error instanceof AIAuthenticationError
+                ? 401
+                : error instanceof AIBudgetExceededError
+                  ? 402
+                  : error instanceof AIRateLimitError
+                    ? 429
+                    : error instanceof AITimeoutError
+                      ? 504
+                      : error instanceof AISchemaError ||
+                          error instanceof AnalysisPipelineError
+                        ? 422
+                        : error instanceof AIProviderError
+                          ? 500
+                          : 500;
+      return response
+        .status(status)
+        .json({
+          error:
+            error instanceof PersistenceUnavailableError
+              ? "A persistência necessária para a análise está indisponível."
+              : safeErrorMessage(error),
+          code:
+            error instanceof PersistenceUnavailableError
+              ? "AI_DURABLE_SINK_UNAVAILABLE"
+              : undefined,
+        });
     }
   });
   return router;

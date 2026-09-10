@@ -1,6 +1,64 @@
-import type {AIMonthlyBudget, AIModelCall, BudgetReservation, BudgetReservationRequest, ProjectAIUsageSnapshot, ProjectCostLedger} from '../types.js';
+import type {
+  AIMonthlyBudget,
+  AIModelCall,
+  AIOperationResult,
+  BudgetReservation,
+  BudgetReservationRequest,
+  ProjectAIUsageSnapshot,
+  ProjectCostLedger,
+} from "../types.js";
 
-export interface BudgetStore {readonly kind:'memory'|'durable'|'unavailable';readonly atomicReservations:boolean;getProject(projectId: string): Promise<ProjectCostLedger | undefined>; saveProject(ledger: ProjectCostLedger): Promise<void>; getMonth(month: string, limitUsd: number): Promise<AIMonthlyBudget>;reserve(request:BudgetReservationRequest):Promise<BudgetReservation>;commit(reservationId:string,call:AIModelCall):Promise<ProjectCostLedger>;release(reservationId:string):Promise<void>;resolveUnknown(reservationId:string):Promise<void>;getUsageSnapshot(projectId:string,month:string,projectLimitUsd:number,monthlyLimitUsd:number):Promise<ProjectAIUsageSnapshot>;health():Promise<{status:'ok'|'degraded';store:'durable'|'memory';atomicReservations:boolean}>}
-export {InMemoryBudgetStore} from './stores/in-memory-budget-store.js';
-export const createLedger = (projectId: string, startedAt = new Date().toISOString()): ProjectCostLedger => ({projectId, startedAt, modelCalls: [], inputTokens: 0, cachedInputTokens: 0, cacheWriteTokens: 0, outputTokens: 0, repairAttempts: 0, totalCostUsd: 0});
-export const appendModelCall = (ledger: ProjectCostLedger, call: AIModelCall): ProjectCostLedger => ({...ledger, modelCalls: [...ledger.modelCalls, call], inputTokens: ledger.inputTokens + call.inputTokens, cachedInputTokens: ledger.cachedInputTokens + call.cachedInputTokens, cacheWriteTokens: ledger.cacheWriteTokens + call.cacheWriteTokens, outputTokens: ledger.outputTokens + call.outputTokens, repairAttempts: ledger.repairAttempts + (call.repairAttempt ? 1 : 0), totalCostUsd: ledger.totalCostUsd + call.costUsd});
+export interface BudgetStore {
+  readonly kind: "memory" | "durable" | "unavailable";
+  readonly atomicReservations: boolean;
+  getProject(projectId: string): Promise<ProjectCostLedger | undefined>;
+  saveProject(ledger: ProjectCostLedger): Promise<void>;
+  getMonth(month: string, limitUsd: number): Promise<AIMonthlyBudget>;
+  reserve(request: BudgetReservationRequest): Promise<BudgetReservation>;
+  commit(reservationId: string, call: AIModelCall): Promise<ProjectCostLedger>;
+  release(reservationId: string): Promise<void>;
+  resolveUnknown(reservationId: string): Promise<void>;
+  getOperationResult(
+    operationId: string,
+  ): Promise<AIOperationResult | undefined>;
+  saveOperationResult(result: AIOperationResult): Promise<void>;
+  getUsageSnapshot(
+    projectId: string,
+    month: string,
+    projectLimitUsd: number,
+    monthlyLimitUsd: number,
+  ): Promise<ProjectAIUsageSnapshot>;
+  health(): Promise<{
+    status: "ok" | "degraded";
+    store: "durable" | "memory";
+    atomicReservations: boolean;
+  }>;
+}
+export { InMemoryBudgetStore } from "./stores/in-memory-budget-store.js";
+export const createLedger = (
+  projectId: string,
+  startedAt = new Date().toISOString(),
+): ProjectCostLedger => ({
+  projectId,
+  startedAt,
+  modelCalls: [],
+  inputTokens: 0,
+  cachedInputTokens: 0,
+  cacheWriteTokens: 0,
+  outputTokens: 0,
+  repairAttempts: 0,
+  totalCostUsd: 0,
+});
+export const appendModelCall = (
+  ledger: ProjectCostLedger,
+  call: AIModelCall,
+): ProjectCostLedger => ({
+  ...ledger,
+  modelCalls: [...ledger.modelCalls, call],
+  inputTokens: ledger.inputTokens + call.inputTokens,
+  cachedInputTokens: ledger.cachedInputTokens + call.cachedInputTokens,
+  cacheWriteTokens: ledger.cacheWriteTokens + call.cacheWriteTokens,
+  outputTokens: ledger.outputTokens + call.outputTokens,
+  repairAttempts: ledger.repairAttempts + (call.repairAttempt ? 1 : 0),
+  totalCostUsd: ledger.totalCostUsd + call.costUsd,
+});

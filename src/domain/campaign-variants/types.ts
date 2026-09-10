@@ -1,6 +1,8 @@
 import type { BrandDNA } from "../brand-intelligence/index.js";
 import type { LayoutPlan } from "../layout-engine/index.js";
 import type { ApprovedProductionFamily } from "../export-engine/index.js";
+import type { RenderSession } from "../render-engine/index.js";
+import type { ImageAssetSession } from "../image-assets/index.js";
 export const CAMPAIGN_VARIANT_SCHEMA_VERSION = "1.0.0" as const;
 export const CAMPAIGN_VARIANT_POLICY_VERSION = "1.0.0" as const;
 export type CampaignVariantStatus =
@@ -85,6 +87,8 @@ export interface CampaignVariant {
   lineage: CampaignVariantLineage;
   readiness: CampaignVariantReadiness;
   layoutPlan?: LayoutPlan;
+  previewRenderSession?: RenderSession;
+  previewImageAssetSession?: ImageAssetSession;
 }
 export interface CampaignVariantExecutionPlan {
   familyId: string;

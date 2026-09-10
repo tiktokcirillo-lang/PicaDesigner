@@ -1,16 +1,54 @@
 import { Router } from "express";
 import {
+  InvalidDurablePayloadError,
   OptimisticConcurrencyError,
+  PersistenceUnavailableError,
   type WorkflowStage,
 } from "../../domain/project-persistence/index.js";
 import { applicationProjectRepository } from "../../infrastructure/project-persistence/index.js";
 import { validateProductionAuthorityBacking } from "../../application/project-persistence/index.js";
 import { applicationGeneratedAssetStore } from "../../infrastructure/image-generation/index.js";
 import { applicationCampaignFamilyRepository } from "../../infrastructure/campaign-variants/index.js";
-const safeError = (error: unknown) =>
-  error instanceof OptimisticConcurrencyError
-    ? { status: 409, message: error.message }
-    : { status: 503, message: "Durable project persistence is unavailable." };
+const repositoryFailure = (error: unknown) =>
+  error instanceof PersistenceUnavailableError ||
+  (error instanceof Error &&
+    (/Neon|database|fetch failed|ECONN|timeout/i.test(error.name) ||
+      /ECONN|database.*unavailable|connection.*(?:failed|closed)|fetch failed/i.test(
+        error.message,
+      )));
+const safeError = (error: unknown) => {
+  const code = error instanceof Error ? error.name : "UnknownError";
+  console.error("project_api_failure", {
+    errorClass: code,
+    errorCode:
+      typeof (error as { code?: unknown })?.code === "string"
+        ? (error as { code: string }).code
+        : undefined,
+  });
+  if (error instanceof OptimisticConcurrencyError)
+    return {
+      status: 409,
+      message: error.message,
+      code: "PROJECT_REVISION_CONFLICT",
+    };
+  if (error instanceof InvalidDurablePayloadError)
+    return {
+      status: 422,
+      message: "Durable project payload is invalid.",
+      code: "PROJECT_INVALID_DURABLE_PAYLOAD",
+    };
+  if (repositoryFailure(error))
+    return {
+      status: 503,
+      message: "Durable project persistence is unavailable.",
+      code: "PROJECT_PERSISTENCE_UNAVAILABLE",
+    };
+  return {
+    status: 500,
+    message: "Project operation failed safely.",
+    code: "PROJECT_APPLICATION_ERROR",
+  };
+};
 export const createProjectsRouter = () => {
   const router = Router();
   router.post("/", async (req, res) => {
@@ -25,7 +63,9 @@ export const createProjectsRouter = () => {
       );
     } catch (error) {
       const safe = safeError(error);
-      return res.status(safe.status).json({ error: safe.message });
+      return res
+        .status(safe.status)
+        .json({ error: safe.message, code: safe.code });
     }
   });
   router.patch("/:projectId", async (req, res) => {
@@ -46,7 +86,9 @@ export const createProjectsRouter = () => {
       return res.json({ project });
     } catch (error) {
       const safe = safeError(error);
-      return res.status(safe.status).json({ error: safe.message });
+      return res
+        .status(safe.status)
+        .json({ error: safe.message, code: safe.code });
     }
   });
   router.get("/", async (_req, res) => {
@@ -168,7 +210,9 @@ export const createProjectsRouter = () => {
       return res.json({ checkpoint: result, project });
     } catch (error) {
       const safe = safeError(error);
-      return res.status(safe.status).json({ error: safe.message });
+      return res
+        .status(safe.status)
+        .json({ error: safe.message, code: safe.code });
     }
   });
   return router;

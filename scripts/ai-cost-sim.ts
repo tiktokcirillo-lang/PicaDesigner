@@ -1,6 +1,7 @@
 import { calculateActualCost } from "../src/infrastructure/ai/budget/cost-calculator.js";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
+import { evaluateCampaignBudgetPreflight } from "../src/domain/campaign-variants/index.js";
 
 type ScenarioName = "LOW" | "NORMAL" | "HIGH" | "REAL_CALIBRATED";
 interface UsageProfile {
@@ -198,6 +199,7 @@ export const simulateMetaAdsFamilyCost = (
 ) => {
   const settings = {
       LOW: {
+        upstreamSpent: 0.12,
         base: 0.16,
         sharedGeneration: 0.08,
         qa: 0.04,
@@ -210,6 +212,7 @@ export const simulateMetaAdsFamilyCost = (
         blocked: 0,
       },
       NORMAL: {
+        upstreamSpent: 0.2,
         base: 0.28,
         sharedGeneration: 0.16,
         qa: 0.08,
@@ -222,6 +225,7 @@ export const simulateMetaAdsFamilyCost = (
         blocked: 0.05,
       },
       HIGH: {
+        upstreamSpent: 0.3,
         base: 0.43,
         sharedGeneration: 0.22,
         qa: 0.1,
@@ -234,6 +238,18 @@ export const simulateMetaAdsFamilyCost = (
         blocked: 0.3,
       },
     }[scenario],
+    runtimePreflight = evaluateCampaignBudgetPreflight({
+      actualSpentUsd: settings.upstreamSpent,
+      remainingHardCapUsd: 0.75 - settings.upstreamSpent,
+      monthlyRemainingUsd: 15,
+      remainingVariants: 4,
+      reviewCostUsd: 0.052,
+      qaCostUsd: 0.06,
+      imageCostUsd: settings.sharedGeneration,
+      verificationCostUsd: 0.06,
+      hasResolvedSourceAsset: true,
+      hasReusableGeneratedAsset: false,
+    }),
     costs = Array.from({ length: projects }, (_, i) =>
       Math.min(
         0.75,
@@ -260,6 +276,11 @@ export const simulateMetaAdsFamilyCost = (
     budgetBlockedRate: settings.blocked,
     projectsOverTarget: costs.filter((x) => x > 0.5).length,
     projectsOverHardLimit: costs.filter((x) => x > 0.75).length,
+    estimatedMandatoryRemaining: runtimePreflight.estimatedMandatoryRemaining,
+    conditionalReserve: runtimePreflight.conditionalReserve,
+    actualSpent: runtimePreflight.actualSpentUsd,
+    remainingHardCap: runtimePreflight.remainingHardCapUsd,
+    runtimePreflightAllowed: runtimePreflight.allowed,
   };
 };
 if (import.meta.url === `file://${process.argv[1]}`) {

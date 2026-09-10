@@ -6,6 +6,7 @@ import {
 } from "../../providers/errors.js";
 import type {
   AIModelCall,
+  AIOperationResult,
   AIMonthlyBudget,
   BudgetReservation,
   BudgetReservationRequest,
@@ -24,6 +25,7 @@ const projectKey = (id: string) => `${NS}:project:${id}`,
   monthKey = (month: string) => `${NS}:month:${month}`,
   reservationKey = (id: string) => `${NS}:reservation:${id}`,
   operationKey = (id: string) => `${NS}:operation:${id}`;
+const operationResultKey = (id: string) => `${NS}:operation-result:${id}`;
 const RESERVE_LUA = `
 local expired=redis.call('ZRANGEBYSCORE',KEYS[5],'-inf',ARGV[12]);for _,rk in ipairs(expired) do local old=redis.call('GET',rk);if old then local x=cjson.decode(old);if x.status=='reserved' or x.status=='unknown_provider_outcome' then local pk=ARGV[13]..':project:'..x.projectId;local mk=ARGV[13]..':month:'..x.month;local sk=pk..':stage:'..x.stage;redis.call('HINCRBY',pk,'reserved',-tonumber(x.estimatedMicroUsd));redis.call('HINCRBY',mk,'reserved',-tonumber(x.estimatedMicroUsd));redis.call('HINCRBY',sk,'reserved',-tonumber(x.estimatedMicroUsd));x.status='expired';redis.call('SET',rk,cjson.encode(x),'EX',3600);if x.operationId then redis.call('DEL',ARGV[13]..':operation:'..x.operationId) end end end;redis.call('ZREM',KEYS[5],rk) end
 local existing=ARGV[11]~='' and redis.call('GET',ARGV[11]) or false
@@ -41,7 +43,7 @@ redis.call('ZADD',KEYS[5],ARGV[12],KEYS[4])
 redis.call('EXPIRE',KEYS[1],7776000);redis.call('EXPIRE',KEYS[3],7776000);redis.call('EXPIRE',KEYS[2],46656000)
 return {'reserved',ARGV[5]}`;
 const COMMIT_LUA = `
-local raw=redis.call('GET',KEYS[4]);if not raw then return {'missing'} end;local r=cjson.decode(raw);if r.status~='reserved' then return {'invalid'} end
+local raw=redis.call('GET',KEYS[4]);if not raw then return {'missing'} end;local r=cjson.decode(raw);if r.status=='committed' then return {'committed'} end;if r.status~='reserved' then return {'invalid'} end
 local reserved=tonumber(r.estimatedMicroUsd);local actual=tonumber(ARGV[1]);redis.call('HINCRBY',KEYS[1],'reserved',-reserved);redis.call('HINCRBY',KEYS[2],'reserved',-reserved);redis.call('HINCRBY',KEYS[3],'reserved',-reserved)
 redis.call('HINCRBY',KEYS[1],'spent',actual);redis.call('HINCRBY',KEYS[2],'spent',actual);redis.call('HINCRBY',KEYS[3],'spent',actual);redis.call('HSET',KEYS[1],'updatedAt',ARGV[2]);redis.call('RPUSH',KEYS[5],ARGV[3])
 r.status='committed';redis.call('SET',KEYS[4],cjson.encode(r),'EX',7776000);redis.call('EXPIRE',KEYS[5],7776000);redis.call('ZREM',KEYS[6],KEYS[4]);return {'committed'}`;
@@ -269,6 +271,24 @@ export class UpstashBudgetStore implements BudgetStore {
   async resolveUnknown(id: string) {
     await this.safe(async () => {
       await this.redis.eval(UNKNOWN_LUA, [reservationKey(id)], []);
+    });
+  }
+  async getOperationResult(operationId: string) {
+    return this.safe(async () => {
+      const raw = await this.redis.get<string>(operationResultKey(operationId));
+      if (!raw) return undefined;
+      return typeof raw === "string"
+        ? (JSON.parse(raw) as AIOperationResult)
+        : (raw as unknown as AIOperationResult);
+    });
+  }
+  async saveOperationResult(result: AIOperationResult) {
+    await this.safe(async () => {
+      await this.redis.set(
+        operationResultKey(result.operationId),
+        JSON.stringify(result),
+        { ex: 7776000 },
+      );
     });
   }
   async getUsageSnapshot(

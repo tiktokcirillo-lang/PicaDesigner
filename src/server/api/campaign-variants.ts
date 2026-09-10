@@ -7,6 +7,7 @@ import {
 } from "../../application/campaign-variants/index.js";
 import {
   campaignFingerprint,
+  evaluateCampaignBudgetPreflight,
   lockCampaignInvariants,
 } from "../../domain/campaign-variants/index.js";
 import { META_ADS_FAMILY } from "../../domain/layout-engine/index.js";
@@ -81,6 +82,8 @@ async function preflight(
   projectId: string,
   remainingVariants: number,
   retry: boolean,
+  state: Awaited<ReturnType<typeof shared>>,
+  family?: import("../../domain/campaign-variants/index.js").CampaignVariantFamily,
 ) {
   const config = loadOpenAIConfig(),
     snapshot = await applicationBudgetStore.getUsageSnapshot(
@@ -89,28 +92,24 @@ async function preflight(
       config.maxProjectCostUsd,
       config.monthlyBudgetUsd,
     ),
-    reviewUsd = remainingVariants * 0.052,
-    qaUsd = remainingVariants * config.postRenderQaTargetUsd,
-    sharedImageUsd = retry
-      ? 0
-      : Math.min(config.imageGenerationTargetUsd, 0.22),
-    verificationReserveUsd = config.postRenderQaTargetUsd,
-    estimated = reviewUsd + qaUsd + sharedImageUsd + verificationReserveUsd,
-    stageCapsFit =
-      reviewUsd <= config.seniorCriticMaxUsd * 2 &&
-      qaUsd + verificationReserveUsd <= config.postRenderQaMaxUsd * 4 &&
-      sharedImageUsd <= config.imageGenerationMaxUsd;
-  return {
-    estimatedUsd: estimated,
-    allowed:
-      stageCapsFit &&
-      estimated <= snapshot.remainingUsd &&
-      estimated <= snapshot.monthlyRemainingUsd,
-    remainingUsd: snapshot.remainingUsd,
+    hasResolvedSourceAsset = state.assets.some((asset) =>
+      ["product_image", "brand_photo", "graphic_asset"].includes(asset.role),
+    ),
+    hasReusableGeneratedAsset = Boolean(
+      family?.variants.some((variant) => variant.imageAssetSessionId),
+    );
+  return evaluateCampaignBudgetPreflight({
+    actualSpentUsd: snapshot.spentUsd,
+    remainingHardCapUsd: snapshot.remainingUsd,
     monthlyRemainingUsd: snapshot.monthlyRemainingUsd,
-    breakdown: { reviewUsd, qaUsd, sharedImageUsd, verificationReserveUsd },
-    stageCapsFit,
-  };
+    remainingVariants,
+    reviewCostUsd: 0.052,
+    qaCostUsd: config.postRenderQaTargetUsd,
+    imageCostUsd: retry ? 0 : Math.min(config.imageGenerationTargetUsd, 0.22),
+    verificationCostUsd: config.postRenderQaTargetUsd,
+    hasResolvedSourceAsset,
+    hasReusableGeneratedAsset,
+  });
 }
 
 export const createCampaignVariantsRouter = () => {
@@ -221,7 +220,13 @@ export const createCampaignVariantsRouter = () => {
         });
       }
       const targets = family.variants.filter((v) => v.status !== "approved"),
-        budget = await preflight(family.projectId, targets.length, false);
+        budget = await preflight(
+          family.projectId,
+          targets.length,
+          false,
+          state,
+          family,
+        );
       if (!budget.allowed)
         return res.status(402).json({
           error: "Campaign mandatory budget preflight failed.",
@@ -316,7 +321,13 @@ export const createCampaignVariantsRouter = () => {
             family: safe(family),
           });
         }
-        const budget = await preflight(family.projectId, 1, true);
+        const budget = await preflight(
+          family.projectId,
+          1,
+          true,
+          state,
+          family,
+        );
         if (!budget.allowed)
           return res
             .status(402)

@@ -49,6 +49,37 @@ await assert.rejects(
 );
 assert.throws(() => assertMetadataOnly({ image: new Uint8Array([1]) }));
 assert.throws(() => assertMetadataOnly({ DATABASE_URL: "secret" }));
+assert.doesNotThrow(() =>
+  assertMetadataOnly({
+    schemaVersion: "1.0.0",
+    sessionId: "reference-session",
+    aiUsage: {
+      inputTokens: 1200,
+      outputTokens: 400,
+      cachedInputTokens: 300,
+      cacheWriteTokens: 20,
+    },
+    quality: {
+      compositionReasoning: 91,
+      hierarchyReasoning: 88,
+      typographicReasoning: 86,
+      colorReasoning: 90,
+      physicalPlausibility: 84,
+    },
+  }),
+);
+for (const field of [
+  "OPENAI_API_KEY",
+  "databaseUrl",
+  "authorization",
+  "credential",
+  "rawPrompt",
+  "rawChainOfThought",
+])
+  assert.throws(
+    () => assertMetadataOnly({ [field]: "private" }),
+    /Private field/,
+  );
 const fixtures = persistenceFixtures(),
   current = await repo.getProject("p"),
   authority = await repo.saveProductionAuthority({
