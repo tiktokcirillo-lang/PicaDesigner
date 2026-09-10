@@ -6,6 +6,7 @@ const sql = await readFile(
 );
 const workspaceSql=await readFile(new URL("../migrations/002_workspace_project_metadata.sql",import.meta.url),"utf8");
 const sourceSql=await readFile(new URL("../migrations/003_project_source_assets.sql",import.meta.url),"utf8");
+const campaignSql=await readFile(new URL("../migrations/004_campaign_variant_families.sql",import.meta.url),"utf8");
 const exportApi=await readFile(new URL('../src/server/api/exports.ts',import.meta.url),'utf8'),factory=await readFile(new URL('../src/infrastructure/project-persistence/factory.ts',import.meta.url),'utf8');
 for (const table of [
   "projects",
@@ -26,6 +27,8 @@ assert(workspaceSql.includes("SET NOT NULL"));
 assert(sourceSql.includes("TABLE IF NOT EXISTS project_source_assets"));
 assert(/UNIQUE\s*\(project_id,\s*operation_id\)/.test(sourceSql));
 assert(!/\bbytea\b|base64/i.test(sourceSql));
+for(const table of ["campaign_variant_families","campaign_variants","campaign_family_authorities","campaign_family_export_sessions"])assert(campaignSql.includes(`TABLE IF NOT EXISTS ${table}`));
+assert(campaignSql.includes("latest_campaign_family_authority_id"));assert(!/\bbytea\b|base64/i.test(campaignSql));
 console.log(
   "DB schema validation passed: durable tables, idempotency indexes and metadata-only storage; no Neon mutation executed.",
 );

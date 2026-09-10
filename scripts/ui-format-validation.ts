@@ -32,8 +32,8 @@ const workspace = readFileSync(
 );
 assert(workspace.includes("restoredDraft"), "H save/restore");
 assert(
-  !html.includes("meta_ads_family"),
-  "single-output UI must not expose family",
+  html.includes('formatId:"meta_ads_family"'),
+  "campaign package UI must expose the canonical family ID",
 );
 console.log(
   "Format selector validation passed: canonical Meta values, context, legacy and save/restore A-H.",

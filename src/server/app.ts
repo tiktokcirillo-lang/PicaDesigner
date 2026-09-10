@@ -17,6 +17,7 @@ import {applicationProjectRepository} from '../infrastructure/project-persistenc
 import {createPreviewRouter} from './api/preview.js';
 import {createSourceAssetsRouter} from './api/source-assets.js';
 import {applicationProjectSourceAssetStore} from '../infrastructure/source-assets/index.js';
+import {createCampaignVariantsRouter} from './api/campaign-variants.js';
 
 export const createServerApp = () => {
   const config = loadOpenAIConfig();
@@ -31,6 +32,7 @@ export const createServerApp = () => {
   app.use('/api/projects',createProjectsRouter());
   app.use('/api/projects',createPreviewRouter());
   app.use('/api/projects',createSourceAssetsRouter());
+  app.use('/api/projects',createCampaignVariantsRouter());
   app.use('/api/visual-forensics', createVisualForensicsRouter());
   app.use('/api/creative-direction', createCreativeDirectionRouter());
   app.use('/api/layout', createLayoutRouter());

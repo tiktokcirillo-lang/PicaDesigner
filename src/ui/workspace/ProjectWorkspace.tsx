@@ -4,7 +4,12 @@ import { Link, useParams } from "react-router-dom";
 import type { SafeProjectState } from "../../domain/project-persistence/index.js";
 import { ApiClientError } from "../../client/api-response.js";
 import { listProjectSourceAssets } from "../../client/source-assets.js";
+import {
+  getLatestCampaignFamily,
+  retryCampaignFormat,
+} from "../../client/campaign-variants.js";
 import type { ProjectSourceAssetSummary } from "../../domain/source-assets/index.js";
+import type { CampaignVariantFamily } from "../../domain/campaign-variants/index.js";
 import {
   getProjectState,
   saveDurableCheckpoint,
@@ -34,6 +39,7 @@ import {
 } from "../state/workspace-logic.js";
 import { runDesignPipeline } from "./pipeline-controller.js";
 import { useToast } from "../primitives/Toast.js";
+import { CampaignVariantNavigator } from "../campaign/CampaignVariantNavigator.js";
 const leftTabs: [WorkspaceTab, string][] = [
     ["briefing", "Briefing"],
     ["reference", "Referência"],
@@ -45,15 +51,30 @@ const leftTabs: [WorkspaceTab, string][] = [
     ["details", "Detalhes"],
     ["export", "Export"],
   ];
-function restoredDraft(state: SafeProjectState, assets: ProjectSourceAssetSummary[]): WorkspaceDraft {
-  const input = state.workflow.workspace_input as Record<string, unknown> | undefined;
+function restoredDraft(
+  state: SafeProjectState,
+  assets: ProjectSourceAssetSummary[],
+): WorkspaceDraft {
+  const input = state.workflow.workspace_input as
+    Record<string, unknown> | undefined;
   const byId = new Map(assets.map((asset) => [asset.assetId, asset]));
-  const ids = (key: string) => Array.isArray(input?.[key]) ? (input?.[key] as string[]).map((id) => byId.get(id)).filter((asset): asset is ProjectSourceAssetSummary => Boolean(asset)) : [];
+  const ids = (key: string) =>
+    Array.isArray(input?.[key])
+      ? (input?.[key] as string[])
+          .map((id) => byId.get(id))
+          .filter((asset): asset is ProjectSourceAssetSummary => Boolean(asset))
+      : [];
   return {
     ...DEFAULT_DRAFT,
     ...(input as Partial<WorkspaceDraft>),
-    referenceAsset: typeof input?.referenceAssetId === "string" ? byId.get(input.referenceAssetId) : undefined,
-    logoAsset: typeof input?.logoAssetId === "string" ? byId.get(input.logoAssetId) : undefined,
+    referenceAsset:
+      typeof input?.referenceAssetId === "string"
+        ? byId.get(input.referenceAssetId)
+        : undefined,
+    logoAsset:
+      typeof input?.logoAssetId === "string"
+        ? byId.get(input.logoAssetId)
+        : undefined,
     productAssets: ids("productAssetIds"),
     brandPhotoAssets: ids("brandPhotoAssetIds"),
     graphicAssets: ids("graphicAssetIds"),
@@ -63,6 +84,10 @@ export function ProjectWorkspace() {
   const { projectId = "" } = useParams(),
     [snapshot, setSnapshot] = useState<SafeProjectState>(),
     [draft, setDraft] = useState<WorkspaceDraft>(DEFAULT_DRAFT),
+    [campaignFamily, setCampaignFamily] = useState<CampaignVariantFamily>(),
+    [selectedCampaignFormat, setSelectedCampaignFormat] = useState(
+      "meta_ads_feed_portrait",
+    ),
     [leftTab, setLeftTab] = useState<WorkspaceTab>("briefing"),
     [rightTab, setRightTab] = useState<RightTab>("pipeline"),
     [saveStatus, setSaveStatus] = useState<
@@ -96,12 +121,14 @@ export function ProjectWorkspace() {
     async (signal?: AbortSignal) => {
       try {
         setError("");
-        const [state, sourceAssets] = await Promise.all([
+        const [state, sourceAssets, campaign] = await Promise.all([
           getProjectState(projectId, signal),
           listProjectSourceAssets(projectId, signal),
+          getLatestCampaignFamily(projectId, signal).catch(() => undefined),
         ]);
         setSnapshot(state);
         setDraft(restoredDraft(state, sourceAssets.assets));
+        setCampaignFamily(campaign?.family);
         setPipeline(pipelineFromSnapshot(state));
         revision.current = state.project.revision;
         hydrated.current = true;
@@ -154,17 +181,31 @@ export function ProjectWorkspace() {
   }, [draft, projectId, snapshot]);
   const format = useMemo(() => {
     try {
-      return draft.formatId === "custom"
-        ? resolveFormatDefinition({
-            width: draft.customWidth ?? 1080,
-            height: draft.customHeight ?? 1080,
-          })
-        : resolveFormatDefinition(draft.formatId);
+      return draft.formatId === "meta_ads_family"
+        ? resolveFormatDefinition(selectedCampaignFormat)
+        : draft.formatId === "custom"
+          ? resolveFormatDefinition({
+              width: draft.customWidth ?? 1080,
+              height: draft.customHeight ?? 1080,
+            })
+          : resolveFormatDefinition(draft.formatId);
     } catch {
       return resolveFormatDefinition("meta_ads_square");
     }
-  }, [draft.formatId, draft.customWidth, draft.customHeight]);
-  const hasRender = Boolean(snapshot?.workflow.render_session),
+  }, [
+    draft.formatId,
+    draft.customWidth,
+    draft.customHeight,
+    selectedCampaignFormat,
+  ]);
+  const hasRender =
+      draft.formatId === "meta_ads_family"
+        ? Boolean(
+            campaignFamily?.variants.find(
+              (v) => v.formatId === selectedCampaignFormat,
+            )?.renderSessionId,
+          )
+        : Boolean(snapshot?.workflow.render_session),
     approved = snapshot?.latestProductionAuthority?.status === "valid";
   function change(patch: Partial<WorkspaceDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
@@ -311,7 +352,13 @@ export function ProjectWorkspace() {
             ) : (
               <Play size={16} />
             )}{" "}
-            {hasRender ? "Atualizar design" : "Gerar design"}
+            {draft.formatId === "meta_ads_family"
+              ? campaignFamily
+                ? "Atualizar pacote"
+                : "Gerar pacote Meta Ads"
+              : hasRender
+                ? "Atualizar design"
+                : "Gerar design"}
           </Button>
         </div>
       </header>
@@ -351,7 +398,12 @@ export function ProjectWorkspace() {
               onError={setError}
             />
           ) : leftTab === "brand" ? (
-            <BrandPanel projectId={projectId} draft={draft} onChange={change} onError={setError} />
+            <BrandPanel
+              projectId={projectId}
+              draft={draft}
+              onChange={change}
+              onError={setError}
+            />
           ) : (
             <FormatSelector draft={draft} onChange={change} />
           )}
@@ -367,6 +419,37 @@ export function ProjectWorkspace() {
         zoom={zoom}
         showGrid={showGrid}
         showSafeArea={showSafeArea}
+        accessory={
+          draft.formatId === "meta_ads_family" ? (
+            <CampaignVariantNavigator
+              family={campaignFamily}
+              selectedFormatId={selectedCampaignFormat}
+              onSelect={setSelectedCampaignFormat}
+              onRetry={async (formatId) => {
+                if (!campaignFamily) return;
+                setError("");
+                try {
+                  const result = await retryCampaignFormat(
+                    projectId,
+                    campaignFamily.familyId,
+                    formatId,
+                  );
+                  setCampaignFamily(result.family);
+                } catch {
+                  setError("Não foi possível tentar novamente esta variante.");
+                }
+              }}
+            />
+          ) : undefined
+        }
+        campaignPreview={
+          draft.formatId === "meta_ads_family" && campaignFamily
+            ? {
+                familyId: campaignFamily.familyId,
+                formatId: selectedCampaignFormat,
+              }
+            : undefined
+        }
         onChange={(patch) => {
           if (patch.zoom !== undefined) setZoom(patch.zoom);
           if (patch.showGrid !== undefined) setShowGrid(patch.showGrid);
@@ -390,7 +473,11 @@ export function ProjectWorkspace() {
           {rightTab === "pipeline" ? (
             <PipelineTimeline pipeline={pipeline} />
           ) : rightTab === "export" ? (
-            <ExportPanel projectId={projectId} state={snapshot} />
+            <ExportPanel
+              projectId={projectId}
+              state={snapshot}
+              campaignFamily={campaignFamily}
+            />
           ) : (
             <div className="details-list">
               <section>

@@ -11,6 +11,8 @@
     "reference:validation": "tsx src/application/reference-intelligence/reference-intelligence.validation.ts",
     "brand:validation": "tsx src/domain/brand-intelligence/brand-intelligence.validation.ts",
     "creative:validation": "tsx src/domain/creative-direction/creative-direction.validation.ts",
+    "campaign:validation": "tsx src/domain/campaign-variants/campaign.validation.ts",
+    "campaign:orchestration-validation": "tsx src/application/campaign-variants/orchestration.validation.ts && tsx src/application/campaign-variants/family-export.validation.ts",
     "budget:validation": "tsx src/infrastructure/ai/budget/budget.validation.ts",
     "layout:validation": "tsx src/domain/layout-engine/format-registry.validation.ts && tsx src/domain/layout-engine/layout-engine.validation.ts && tsx scripts/ui-format-validation.ts",
     "critic:validation": "tsx src/domain/art-director-review/art-director-review.validation.ts",

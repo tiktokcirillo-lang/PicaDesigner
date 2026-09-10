@@ -1,6 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { ProjectCard } from "../dashboard/ProjectCard.js";
 import { FormatSelector, formatLabel } from "../formats/FormatSelector.js";
@@ -14,6 +13,11 @@ import {
   toWorkspaceInput,
 } from "../state/workspace-logic.js";
 import type { SafeProjectState } from "../../domain/project-persistence/index.js";
+import {
+  createCampaignFamily,
+  type CampaignInvariantSet,
+} from "../../domain/campaign-variants/index.js";
+import { CampaignVariantNavigator } from "../campaign/CampaignVariantNavigator.js";
 afterEach(cleanup);
 const project = {
   projectId: "project_server",
@@ -67,6 +71,46 @@ describe("workspace components", () => {
     fireEvent.click(screen.getByRole("button", { name: /Vertical Feed/i }));
     expect(change).toHaveBeenCalledWith({ formatId: "meta_ads_feed_portrait" });
   });
+  it("selects and navigates the canonical Meta Ads family", async () => {
+    const change = vi.fn();
+    render(<FormatSelector draft={DEFAULT_DRAFT} onChange={change} />);
+    fireEvent.click(screen.getByRole("button", { name: /Meta Ads Package/i }));
+    expect(change).toHaveBeenCalledWith({ formatId: "meta_ads_family" });
+    cleanup();
+    const invariants = {
+        selectedCreativeRouteId: "route",
+        creativeDirectionSessionId: "creative",
+        creativeConcept: "concept",
+        creativeDeviceIdentity: "device",
+        heroRole: "product",
+        primaryMessage: "message",
+        approvedCopyContent: ["message"],
+        mandatoryContent: [],
+        sourceAssetChecksums: [],
+        campaignVisualIdentity: "identity",
+        majorHierarchyIntent: "hero",
+        fingerprint: "inv",
+      } satisfies CampaignInvariantSet,
+      family = createCampaignFamily({
+        projectId: "p",
+        operationId: "o",
+        inputFingerprint: "fp",
+        invariants,
+        estimatedCostUsd: 0.3,
+        hardCapUsd: 0.75,
+      }),
+      select = vi.fn();
+    render(
+      <CampaignVariantNavigator
+        family={family}
+        selectedFormatId="meta_ads_feed_portrait"
+        onSelect={select}
+      />,
+    );
+    expect(screen.getAllByRole("tab")).toHaveLength(4);
+    fireEvent.click(screen.getByRole("tab", { name: /9:16/ }));
+    expect(select).toHaveBeenCalledWith("meta_ads_story_reels");
+  });
   it("shows actual stages without fake percentages", () => {
     render(
       <PipelineTimeline
@@ -98,5 +142,75 @@ describe("workspace components", () => {
     render(<ExportPanel projectId={project.projectId} state={state} />);
     expect(screen.getByText("Exportação bloqueada")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "PNG" })).toBeNull();
+  });
+  it("offers retry only for the failed campaign variant and gates the family package", () => {
+    const invariants = {
+      selectedCreativeRouteId: "route",
+      creativeDirectionSessionId: "creative",
+      creativeConcept: "concept",
+      creativeDeviceIdentity: "device",
+      heroRole: "product",
+      primaryMessage: "message",
+      approvedCopyContent: ["message"],
+      mandatoryContent: [],
+      sourceAssetChecksums: [],
+      campaignVisualIdentity: "identity",
+      majorHierarchyIntent: "hero",
+      fingerprint: "inv",
+    } satisfies CampaignInvariantSet;
+    const base = createCampaignFamily({
+        projectId: "p",
+        operationId: "o",
+        inputFingerprint: "fp",
+        invariants,
+        estimatedCostUsd: 0.3,
+        hardCapUsd: 0.75,
+      }),
+      family = {
+        ...base,
+        status: "partial" as const,
+        variants: base.variants.map((variant) => ({
+          ...variant,
+          status:
+            variant.formatId === "meta_ads_story_reels"
+              ? ("failed" as const)
+              : ("approved" as const),
+        })),
+        approval: {
+          ...base.approval,
+          status: "partial" as const,
+          approvedVariantIds: base.variants
+            .filter((variant) => variant.formatId !== "meta_ads_story_reels")
+            .map((variant) => variant.variantId),
+          missingFormatIds: ["meta_ads_story_reels"],
+          metaAdsPackageReady: false,
+        },
+      };
+    const retry = vi.fn();
+    render(
+      <CampaignVariantNavigator
+        family={family}
+        selectedFormatId="meta_ads_story_reels"
+        onSelect={vi.fn()}
+        onRetry={retry}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Tentar novamente" }));
+    expect(retry).toHaveBeenCalledWith("meta_ads_story_reels");
+    cleanup();
+    const state = {
+      project,
+      workflow: {},
+      activeAssetResolutions: [],
+      exports: [],
+    } as SafeProjectState;
+    render(<ExportPanel projectId="p" state={state} campaignFamily={family} />);
+    expect(
+      (
+        screen.getByRole("button", {
+          name: /Baixar pacote Meta Ads/,
+        }) as HTMLButtonElement
+      ).disabled,
+    ).toBe(true);
   });
 });

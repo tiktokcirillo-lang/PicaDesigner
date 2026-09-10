@@ -1,1 +1,2 @@
 export * from './config.js';export * from './encoders.js';export * from './svg-exporter.js';export * from './pdf.js';export * from './zip.js';export * from './store.js';export * from './vercel-blob-store.js';export * from './store-factory.js';
+export type {ProductionArtifactStore} from '../../domain/export-engine/index.js';

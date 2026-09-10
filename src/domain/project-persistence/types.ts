@@ -4,6 +4,11 @@ import type {
   VisualApprovedRenderPackage,
   PostRenderReviewSession,
 } from "../post-render-review/index.js";
+import type {
+  CampaignFamilyAuthority,
+  CampaignFamilyExportSession,
+  CampaignVariantFamily,
+} from "../campaign-variants/index.js";
 export const PROJECT_PERSISTENCE_SCHEMA_VERSION = "1.0.0" as const;
 export type WorkflowStage =
   | "workspace_input"
@@ -85,6 +90,13 @@ export interface SafeProjectState {
       artifacts: ProductionExportSession["artifacts"];
     }
   >;
+  latestCampaignFamily?: CampaignVariantFamily;
+  latestCampaignFamilyAuthority?: CampaignFamilyAuthority;
+  campaignFamilyExports?: Array<
+    Omit<CampaignFamilyExportSession, "artifact"> & {
+      artifact: Omit<CampaignFamilyExportSession["artifact"], "backingRef">;
+    }
+  >;
 }
 export interface SaveWorkflowInput {
   projectId: string;
@@ -139,9 +151,7 @@ export interface ProjectPersistenceRepository {
   ): Promise<DurableExportSessionRecord | undefined>;
   listExportSessions(projectId: string): Promise<DurableExportSessionRecord[]>;
   getSafeProjectState(projectId: string): Promise<SafeProjectState | undefined>;
-  getProjectHistory(
-    projectId: string,
-  ): Promise<{
+  getProjectHistory(projectId: string): Promise<{
     checkpoints: WorkflowCheckpoint[];
     authorities: Array<
       Omit<

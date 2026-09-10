@@ -6,6 +6,10 @@ import { ensureRenderSession } from "../../client/render-session.js";
 import { ensureImageAssets } from "../../client/image-assets.js";
 import { ensurePostRenderReview } from "../../client/post-render-review.js";
 import { saveDurableCheckpoint } from "../../client/project-persistence.js";
+import {
+  createCampaignFamily,
+  runCampaignFamily,
+} from "../../client/campaign-variants.js";
 import { createBrandIntelligenceSession } from "../../domain/brand-intelligence/index.js";
 import type {
   SafeProjectState,
@@ -54,7 +58,14 @@ export async function runDesignPipeline(input: {
   };
   const workspaceInput = toWorkspaceInput(input.draft),
     workspaceFingerprint = await fingerprintWorkspaceInput(workspaceInput),
-    sourceAssetIds=[input.draft.logoAsset,...input.draft.productAssets,...input.draft.brandPhotoAssets,...input.draft.graphicAssets].filter((asset):asset is NonNullable<typeof asset>=>Boolean(asset)).map(asset=>asset.assetId);
+    sourceAssetIds = [
+      input.draft.logoAsset,
+      ...input.draft.productAssets,
+      ...input.draft.brandPhotoAssets,
+      ...input.draft.graphicAssets,
+    ]
+      .filter((asset): asset is NonNullable<typeof asset> => Boolean(asset))
+      .map((asset) => asset.assetId);
   input.onStage("preparation");
   await persist("workspace_input", workspaceInput, workspaceFingerprint);
   let reference = workflow.reference_intelligence;
@@ -85,8 +96,31 @@ export async function runDesignPipeline(input: {
         headlineFont: input.draft.titleFont,
         bodyFont: input.draft.bodyFont,
         url: input.draft.brandUrl,
-        logoAssets: input.draft.logoAsset ? [{id:input.draft.logoAsset.assetId,type:"logo" as const,mediaType:input.draft.logoAsset.mediaType,fileName:input.draft.logoAsset.filename,fingerprint:input.draft.logoAsset.checksum,source:"logo_asset" as const,verified:true}] : undefined,
-        assets: [...input.draft.graphicAssets,...input.draft.brandPhotoAssets].map(asset=>({id:asset.assetId,type:"graphic_asset" as const,mediaType:asset.mediaType,fileName:asset.filename,fingerprint:asset.checksum,source:"brand_asset" as const,verified:true})),
+        logoAssets: input.draft.logoAsset
+          ? [
+              {
+                id: input.draft.logoAsset.assetId,
+                type: "logo" as const,
+                mediaType: input.draft.logoAsset.mediaType,
+                fileName: input.draft.logoAsset.filename,
+                fingerprint: input.draft.logoAsset.checksum,
+                source: "logo_asset" as const,
+                verified: true,
+              },
+            ]
+          : undefined,
+        assets: [
+          ...input.draft.graphicAssets,
+          ...input.draft.brandPhotoAssets,
+        ].map((asset) => ({
+          id: asset.assetId,
+          type: "graphic_asset" as const,
+          mediaType: asset.mediaType,
+          fileName: asset.filename,
+          fingerprint: asset.checksum,
+          source: "brand_asset" as const,
+          verified: true,
+        })),
       }
     : undefined;
   const brand = createBrandIntelligenceSession(
@@ -114,6 +148,21 @@ export async function runDesignPipeline(input: {
   if (creative.status !== "ready")
     throw new Error("A direção criativa não ficou pronta.");
   await persist("creative_direction", creative, creative.sessionId);
+  if (input.draft.formatId === "meta_ads_family") {
+    input.onStage("layout");
+    const campaign = await createCampaignFamily({
+      projectId: input.projectId,
+      expectedRevision: revision,
+      operationId: `campaign:${workspaceFingerprint}`,
+    });
+    input.onStage("production");
+    const executed = await runCampaignFamily(
+      input.projectId,
+      campaign.family.familyId,
+    );
+    input.onStage("qa");
+    return { revision, campaign: executed.family, creative, brand, reference };
+  }
   input.onStage("layout");
   const layout = await ensureLayoutIntelligence({
     projectId: input.projectId,

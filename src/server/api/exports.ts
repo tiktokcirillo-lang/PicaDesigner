@@ -12,7 +12,7 @@ import {
   SafeSelfContainedSvgExporter,
 } from "../../infrastructure/export-engine/index.js";
 import { applicationProjectRepository } from "../../infrastructure/project-persistence/index.js";
-import {validateProductionAuthorityBacking} from '../../application/project-persistence/index.js';
+import { validateProductionAuthorityBacking } from "../../application/project-persistence/index.js";
 type CreateBody = {
   projectId: string;
   authorityId?: string;
@@ -36,11 +36,9 @@ export const createExportsRouter = () => {
         !Array.isArray(body.formats) ||
         "visualApprovedPackage" in (req.body ?? {})
       )
-        return res
-          .status(400)
-          .json({
-            error: "Server-side production authority and formats are required.",
-          });
+        return res.status(400).json({
+          error: "Server-side production authority and formats are required.",
+        });
       const authority =
         await applicationProjectRepository.getProductionAuthority(
           body.projectId,
@@ -50,7 +48,17 @@ export const createExportsRouter = () => {
         return res
           .status(403)
           .json({ error: "Valid production authority was not found." });
-      const authorityHealth=await validateProductionAuthorityBacking(authority,applicationGeneratedAssetStore);if(!authorityHealth.valid)return res.status(409).json({error:'Production authority backing is degraded.',missingAssets:authorityHealth.missing});
+      const authorityHealth = await validateProductionAuthorityBacking(
+        authority,
+        applicationGeneratedAssetStore,
+      );
+      if (!authorityHealth.valid)
+        return res
+          .status(409)
+          .json({
+            error: "Production authority backing is degraded.",
+            missingAssets: authorityHealth.missing,
+          });
       const existing = (
           await applicationProjectRepository.listExportSessions(body.projectId)
         ).find(
@@ -105,15 +113,12 @@ export const createExportsRouter = () => {
           : undefined;
       return res.json(debug ? { ...result, debugExport: debug } : result);
     } catch (error) {
-      return res
-        .status(503)
-        .json({
-          error:
-            error instanceof Error &&
-            error.name === "OptimisticConcurrencyError"
-              ? error.message
-              : "Production export is temporarily unavailable.",
-        });
+      return res.status(503).json({
+        error:
+          error instanceof Error && error.name === "OptimisticConcurrencyError"
+            ? error.message
+            : "Production export is temporarily unavailable.",
+      });
     }
   });
   router.post("/read-handle", async (req, res) => {
@@ -135,17 +140,15 @@ export const createExportsRouter = () => {
           projectId,
         ))
       )
-        return res
-          .status(404)
-          .json({
-            error: "Export artifact unavailable.",
-            canReExport: Boolean(
-              await applicationProjectRepository.getProductionAuthority(
-                projectId,
-                record.authorityId,
-              ),
+        return res.status(404).json({
+          error: "Export artifact unavailable.",
+          canReExport: Boolean(
+            await applicationProjectRepository.getProductionAuthority(
+              projectId,
+              record.authorityId,
             ),
-          });
+          ),
+        });
       if (applicationProductionArtifactStore.kind === "memory")
         return res.json({
           url: `/api/exports/download?projectId=${encodeURIComponent(projectId)}&exportSessionId=${encodeURIComponent(exportSessionId)}&artifactId=${encodeURIComponent(artifactId)}`,

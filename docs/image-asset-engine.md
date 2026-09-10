@@ -5,3 +5,6 @@ Phase 9 converts unresolved, generatable `AssetRequirement`s from an approved `R
 Logos, uploaded products/photos and content-bearing assets are never synthesized. Generated assets remain `qaPending`; image generation is not final artwork approval.
 
 The initial `InMemoryGeneratedAssetStore` is intentionally non-persistent and unsuitable for durable serverless production storage. Replace it with object storage implementing `GeneratedAssetStore`; do not put image bytes in Redis or project JSON.
+# Campaign families
+
+Requirements are planned across variants before generation, favoring source reuse, shared assets and viable responsive crops before format-specific jobs.

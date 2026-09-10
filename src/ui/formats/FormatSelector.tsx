@@ -34,7 +34,7 @@ const legacyFormats = [
   "Twitter Header (1500x500)",
 ];
 export const formatLabel = (id: string) =>
-  FORMAT_REGISTRY[id]?.label ??
+  (id==="meta_ads_family"?"Meta Ads Package":FORMAT_REGISTRY[id]?.label) ??
   (id.startsWith("custom_") ? "Formato personalizado" : id);
 export function FormatSelector({
   draft,
@@ -46,6 +46,16 @@ export function FormatSelector({
   return (
     <div className="panel-form">
       <div className="format-groups">
+        <section>
+          <h3>Pacote multiformato</h3>
+          <div className="format-grid">
+            <button type="button" className={`format-card format-card--family ${draft.formatId === "meta_ads_family" ? "selected" : ""}`} onClick={() => onChange({formatId:"meta_ads_family"})}>
+              {draft.formatId === "meta_ads_family" ? <Check size={14}/> : null}
+              <strong>Meta Ads Package</strong>
+              <small>4 formatos · 1:1 · 4:5 · 9:16 · 1.91:1</small>
+            </button>
+          </div>
+        </section>
         {groups.map((group) => (
           <section key={group.label}>
             <h3>{group.label}</h3>

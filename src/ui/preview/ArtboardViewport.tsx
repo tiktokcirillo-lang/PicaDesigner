@@ -1,6 +1,7 @@
 import { Grid3X3, Maximize, Shield } from "lucide-react";
 import { IconButton } from "../primitives/Button.js";
 import { Badge, Skeleton } from "../primitives/Status.js";
+import type {ReactNode} from "react";
 export function ArtboardViewport({
   projectId,
   hasRender,
@@ -12,6 +13,8 @@ export function ArtboardViewport({
   showGrid,
   showSafeArea,
   onChange,
+  accessory,
+  campaignPreview,
 }: {
   projectId: string;
   hasRender: boolean;
@@ -27,9 +30,12 @@ export function ArtboardViewport({
     showGrid?: boolean;
     showSafeArea?: boolean;
   }) => void;
+  accessory?:ReactNode;
+  campaignPreview?:{familyId:string;formatId:string};
 }) {
   return (
     <section className="viewport">
+      {accessory}
       <header>
         <div>
           <Badge tone={approved ? "success" : hasRender ? "info" : "neutral"}>
@@ -81,7 +87,7 @@ export function ArtboardViewport({
         >
           {hasRender ? (
             <img
-              src={`/api/projects/${encodeURIComponent(projectId)}/preview?scene=${scene}`}
+              src={`/api/projects/${encodeURIComponent(projectId)}/preview?scene=${scene}${campaignPreview?`&familyId=${encodeURIComponent(campaignPreview.familyId)}&formatId=${encodeURIComponent(campaignPreview.formatId)}`:""}`}
               alt="Prévia atual da arte"
               onLoad={(e) => e.currentTarget.classList.add("loaded")}
             />

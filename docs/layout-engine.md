@@ -17,3 +17,6 @@ The solver allocates major regions, maps hierarchy to area/type/isolation/layer 
 `POST /api/layout/plan` rebuilds the plan server-side from structured sessions and costs `$0.0000`. It fetches no URLs and executes no user HTML, SVG or script. `POST /api/layout/debug` emits a diagnostic SVG wireframe; its colors are technical and are not production design tokens.
 
 The Design Spec receives the validated LayoutPlan as the sole geometric authority. It may explain absent details qualitatively but cannot invent coordinates, sizes, margins, grid counts or placement.
+# Campaign families
+
+Meta Ads Package uses the canonical responsive solver to produce four independently solved layouts; proportional scaling and crop-only duplication are rejected by the campaign native-layout gate.

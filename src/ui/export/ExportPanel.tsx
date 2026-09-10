@@ -6,17 +6,49 @@ import {
   getProductionDownload,
 } from "../../client/production-export.js";
 import { Button } from "../primitives/Button.js";
+import type { CampaignVariantFamily } from "../../domain/campaign-variants/index.js";
+import {
+  createCampaignFamilyExport,
+  getCampaignFamilyDownload,
+} from "../../client/campaign-variants.js";
 import { useToast } from "../primitives/Toast.js";
 export function ExportPanel({
   projectId,
   state,
+  campaignFamily,
 }: {
   projectId: string;
   state: SafeProjectState;
+  campaignFamily?: CampaignVariantFamily;
 }) {
   const [busy, setBusy] = useState(""),
     { notify } = useToast(),
     approved = state.latestProductionAuthority?.status === "valid";
+  async function downloadCampaign() {
+    if (!campaignFamily) return;
+    setBusy("campaign");
+    try {
+      const session = await createCampaignFamilyExport(
+          projectId,
+          campaignFamily.familyId,
+          state.project.name,
+        ),
+        handle = await getCampaignFamilyDownload(
+          projectId,
+          campaignFamily.familyId,
+          session.exportSessionId,
+        ),
+        link = document.createElement("a");
+      link.href = handle.url;
+      link.download = handle.filename;
+      link.click();
+      notify("Pacote Meta Ads pronto");
+    } catch {
+      notify("Não foi possível preparar o pacote Meta Ads.");
+    } finally {
+      setBusy("");
+    }
+  }
   async function download(format: "png" | "webp" | "pdf" | "zip" | "svg") {
     setBusy(format);
     try {
@@ -63,6 +95,26 @@ export function ExportPanel({
   }
   return (
     <div className="export-panel">
+      {campaignFamily ? (
+        <section className="campaign-export">
+          <strong>Pacote Meta Ads</strong>
+          {campaignFamily.variants.map((variant) => (
+            <p key={variant.variantId}>
+              {variant.width}×{variant.height} —{" "}
+              {variant.status === "approved" ? "Ready" : variant.status}
+            </p>
+          ))}
+          <Button
+            disabled={
+              !campaignFamily.approval.metaAdsPackageReady || Boolean(busy)
+            }
+            onClick={downloadCampaign}
+          >
+            <Download size={15} />
+            {busy === "campaign" ? "Preparando…" : "Baixar pacote Meta Ads"}
+          </Button>
+        </section>
+      ) : null}
       {!approved ? (
         <div className="export-gate">
           <PackageOpen />

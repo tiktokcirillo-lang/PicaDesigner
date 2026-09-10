@@ -6,6 +6,7 @@ import {
 import { applicationProjectRepository } from "../../infrastructure/project-persistence/index.js";
 import { validateProductionAuthorityBacking } from "../../application/project-persistence/index.js";
 import { applicationGeneratedAssetStore } from "../../infrastructure/image-generation/index.js";
+import { applicationCampaignFamilyRepository } from "../../infrastructure/campaign-variants/index.js";
 const safeError = (error: unknown) =>
   error instanceof OptimisticConcurrencyError
     ? { status: 409, message: error.message }
@@ -64,6 +65,37 @@ export const createProjectsRouter = () => {
       const state = await applicationProjectRepository.getSafeProjectState(
         req.params.projectId,
       );
+      if (state) {
+        state.latestCampaignFamily =
+          await applicationCampaignFamilyRepository.latest(
+            req.params.projectId,
+          );
+        if (state.latestCampaignFamily?.approval.familyAuthorityId)
+          state.latestCampaignFamilyAuthority =
+            await applicationCampaignFamilyRepository.getAuthority(
+              req.params.projectId,
+              state.latestCampaignFamily.approval.familyAuthorityId,
+            );
+        const familyExports =
+          await applicationCampaignFamilyRepository.listExports(
+            req.params.projectId,
+            state.latestCampaignFamily?.familyId,
+          );
+        state.campaignFamilyExports = familyExports.map(
+          ({ artifact, ...session }) => ({
+            ...session,
+            artifact: {
+              artifactId: artifact.artifactId,
+              filename: artifact.filename,
+              format: artifact.format,
+              mediaType: artifact.mediaType,
+              byteSize: artifact.byteSize,
+              checksum: artifact.checksum,
+              status: artifact.status,
+            },
+          }),
+        );
+      }
       if (state?.latestProductionAuthority) {
         const authority =
           await applicationProjectRepository.getProductionAuthority(
