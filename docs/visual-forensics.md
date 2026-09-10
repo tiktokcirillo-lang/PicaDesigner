@@ -31,3 +31,7 @@ Literal content is stored in `SemanticFirewall.semanticObservations`, outside st
 A future adapter implements `VisualForensicsExtractor.analyze(input)`. Inputs support URL, base64, or bytes, plus context, semantic exclusions, analysis depth, and language. Provider code remains outside this domain and must return a report that passes `validateVisualForensicsReport()`.
 
 Prompt modules are split by responsibility: observation, relationships, composition, typography, color/light, inference, and critique. Builders add execution context without coupling domain instructions to a specific provider. Analytical passes explicitly preserve the sequence from raw facts to Design DNA mapping.
+
+## Reference reuse limitation
+
+Reference Intelligence reuse remains keyed by project, source-image checksum, analysis depth, and compatible schema versions. The browser session cache can reuse an earlier reference after switching away and back without another provider call. Durable workflow persistence currently retains the latest reference checkpoint per stage, so reuse of an older reference after a server cold start is not guaranteed until a versioned reference-session index is introduced. This fix intentionally does not add a new DAM or cache authority.

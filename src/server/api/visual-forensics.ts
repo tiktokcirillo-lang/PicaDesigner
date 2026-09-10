@@ -4,6 +4,7 @@ import { applicationBudgetStore as budgetStore } from "../../infrastructure/ai/b
 import {
   AIAuthenticationError,
   AIBudgetExceededError,
+  AIIdempotencyConflictError,
   AIProviderError,
   AIRateLimitError,
   AISchemaError,
@@ -63,12 +64,9 @@ export const createVisualForensicsRouter = (): Router => {
                 )
               : undefined;
         if (!bytes)
-          return response
-            .status(409)
-            .json({
-              error:
-                "O arquivo original da referência não está mais disponível.",
-            });
+          return response.status(409).json({
+            error: "O arquivo original da referência não está mais disponível.",
+          });
         image = {
           kind: "base64",
           data: Buffer.from(bytes).toString("base64"),
@@ -111,20 +109,22 @@ export const createVisualForensicsRouter = (): Router => {
       const status =
         error instanceof UnsupportedAIInputError
           ? 400
-          : error instanceof AIAuthenticationError
-            ? 401
-            : error instanceof AIBudgetExceededError
-              ? 402
-              : error instanceof AIRateLimitError
-                ? 429
-                : error instanceof AITimeoutError
-                  ? 504
-                  : error instanceof AISchemaError ||
-                      error instanceof AnalysisPipelineError
-                    ? 422
-                    : error instanceof AIProviderError
-                      ? 500
-                      : 500;
+          : error instanceof AIIdempotencyConflictError
+            ? 409
+            : error instanceof AIAuthenticationError
+              ? 401
+              : error instanceof AIBudgetExceededError
+                ? 402
+                : error instanceof AIRateLimitError
+                  ? 429
+                  : error instanceof AITimeoutError
+                    ? 504
+                    : error instanceof AISchemaError ||
+                        error instanceof AnalysisPipelineError
+                      ? 422
+                      : error instanceof AIProviderError
+                        ? 500
+                        : 500;
       return response.status(status).json({ error: safeErrorMessage(error) });
     }
   });

@@ -4,7 +4,10 @@ import { BudgetedAIExecutor } from "../../infrastructure/ai/budget/executor.js";
 import { applicationBudgetStore } from "../../infrastructure/ai/budget/runtime-store.js";
 import { loadOpenAIConfig } from "../../infrastructure/ai/providers/openai/config.js";
 import { OpenAIProvider } from "../../infrastructure/ai/providers/openai/responses.js";
-import { safeErrorMessage } from "../../infrastructure/ai/providers/errors.js";
+import {
+  AIIdempotencyConflictError,
+  safeErrorMessage,
+} from "../../infrastructure/ai/providers/errors.js";
 import {
   createArtDirectorReview,
   OpenAISeniorArtDirectorCritic,
@@ -20,12 +23,10 @@ export const createArtDirectorReviewRouter = () => {
         !body.creativeDirection ||
         !body.layoutIntelligence
       )
-        return res
-          .status(400)
-          .json({
-            error:
-              "projectId, creativeDirection and layoutIntelligence are required",
-          });
+        return res.status(400).json({
+          error:
+            "projectId, creativeDirection and layoutIntelligence are required",
+        });
       const config = loadOpenAIConfig(),
         ledger =
           (await applicationBudgetStore.getProject(body.projectId)) ??
@@ -50,7 +51,9 @@ export const createArtDirectorReviewRouter = () => {
         );
       return res.json(await createArtDirectorReview(body, critic));
     } catch (e) {
-      return res.status(422).json({ error: safeErrorMessage(e) });
+      return res
+        .status(e instanceof AIIdempotencyConflictError ? 409 : 422)
+        .json({ error: safeErrorMessage(e) });
     }
   });
   return router;

@@ -7,6 +7,7 @@ import { applicationBudgetStore as budgetStore } from "../../infrastructure/ai/b
 import {
   AIAuthenticationError,
   AIBudgetExceededError,
+  AIIdempotencyConflictError,
   AIProviderError,
   AIRateLimitError,
   AISchemaError,
@@ -21,21 +22,23 @@ import type { GenerateDesignSpecRequest } from "../../application/design-spec/in
 
 const sendError = (response: Response, error: unknown) => {
   const status =
-    error instanceof UnsupportedAIInputError
-      ? 400
-      : error instanceof AIAuthenticationError
-        ? 401
-        : error instanceof AIBudgetExceededError
-          ? 402
-          : error instanceof AIRateLimitError
-            ? 429
-            : error instanceof AITimeoutError
-              ? 504
-              : error instanceof AISchemaError
-                ? 422
-                : error instanceof AIProviderError
-                  ? 500
-                  : 500;
+    error instanceof AIIdempotencyConflictError
+      ? 409
+      : error instanceof UnsupportedAIInputError
+        ? 400
+        : error instanceof AIAuthenticationError
+          ? 401
+          : error instanceof AIBudgetExceededError
+            ? 402
+            : error instanceof AIRateLimitError
+              ? 429
+              : error instanceof AITimeoutError
+                ? 504
+                : error instanceof AISchemaError
+                  ? 422
+                  : error instanceof AIProviderError
+                    ? 500
+                    : 500;
   return response.status(status).json({ error: safeErrorMessage(error) });
 };
 
@@ -54,11 +57,9 @@ export const createLegacyAIRouter = (): Router => {
         projectId = `copy-${Date.now()}`,
       } = request.body as { text?: string; tone?: string; projectId?: string };
       if (!text?.trim() || text.length > 10_000)
-        return response
-          .status(400)
-          .json({
-            error: "text is required and must be at most 10,000 characters",
-          });
+        return response.status(400).json({
+          error: "text is required and must be at most 10,000 characters",
+        });
       return response.json(
         await refineCopy(
           { text: text.trim(), tone, projectId },
@@ -98,11 +99,9 @@ export const createLegacyAIRouter = (): Router => {
         );
       }
       if (typeof body.copy !== "string" || body.copy.length > 10_000)
-        return response
-          .status(400)
-          .json({
-            error: "copy must be a string with at most 10,000 characters",
-          });
+        return response.status(400).json({
+          error: "copy must be a string with at most 10,000 characters",
+        });
       if (!body.format?.trim() || body.format.length > 120)
         return response.status(400).json({ error: "format is required" });
       if (!body.destinationTool?.trim() || body.destinationTool.length > 120)
