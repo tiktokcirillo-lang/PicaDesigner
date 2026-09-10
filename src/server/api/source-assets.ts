@@ -16,9 +16,16 @@ import {
   type SourceAssetUploadDescriptor,
 } from "../../domain/source-assets/index.js";
 import {
+  checkProjectSourceAssetUpload,
   finalizeProjectSourceAsset,
   reconcileProjectSourceAsset,
 } from "../../application/source-assets/index.js";
+const sourceError = (
+  res: express.Response,
+  status: number,
+  code: string,
+  error: string,
+) => res.status(status).json({ code, error });
 const roles = new Set<ProjectSourceAssetRole>([
     "visual_reference",
     "official_logo",
@@ -48,15 +55,80 @@ const parseDescriptor = (value: string | null): SourceAssetUploadDescriptor => {
 export const createSourceAssetsRouter = () => {
   const router = Router(),
     config = loadSourceAssetConfig();
+  router.post("/:projectId/source-assets/check", async (req, res) => {
+    try {
+      const projectId = req.params.projectId,
+        descriptor = parseDescriptor(JSON.stringify(req.body));
+      if (
+        descriptor.projectId !== projectId ||
+        !(await applicationProjectRepository.getProject(projectId))
+      )
+        return sourceError(
+          res,
+          404,
+          "SOURCE_INVALID_FILE",
+          "Projeto não encontrado.",
+        );
+      if (
+        descriptor.byteSize > config.maxBytes ||
+        !allowedMediaTypesFor(descriptor.role).includes(descriptor.mediaType)
+      )
+        return sourceError(
+          res,
+          400,
+          "SOURCE_INVALID_FILE",
+          "Arquivo inválido.",
+        );
+      const result = await checkProjectSourceAssetUpload(descriptor, {
+        repository: applicationProjectSourceAssetRepository,
+        store: applicationProjectSourceAssetStore,
+        maxBytes: config.maxBytes,
+        maxPixels: config.maxPixels,
+      });
+      return res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (/invalid source upload authorization/i.test(message))
+        return sourceError(
+          res,
+          400,
+          "SOURCE_INVALID_FILE",
+          "Arquivo inválido.",
+        );
+      if (/checksum|metadata mismatch|size mismatch|media type/i.test(message))
+        return sourceError(
+          res,
+          409,
+          "SOURCE_CHECKSUM_MISMATCH",
+          "O arquivo armazenado não corresponde ao envio.",
+        );
+      if (/backing unavailable/i.test(message))
+        return sourceError(
+          res,
+          409,
+          "SOURCE_BACKING_UNAVAILABLE",
+          "Arquivo indisponível após envio.",
+        );
+      return sourceError(
+        res,
+        503,
+        "SOURCE_STORAGE_UNAVAILABLE",
+        "Storage temporariamente indisponível.",
+      );
+    }
+  });
   router.post("/:projectId/source-assets/upload", async (req, res) => {
     try {
       if (
         applicationProjectSourceAssetStore.kind !== "durable" ||
         !applicationProjectSourceAssetStore.capabilities.directClientUpload
       )
-        return res
-          .status(503)
-          .json({ error: "Durable client upload is unavailable." });
+        return sourceError(
+          res,
+          503,
+          "SOURCE_STORAGE_UNAVAILABLE",
+          "Storage de upload indisponível.",
+        );
       const result = await handleUpload({
         request: req,
         body: req.body as HandleUploadBody,
@@ -105,9 +177,12 @@ export const createSourceAssetsRouter = () => {
       });
       return res.json(result);
     } catch {
-      return res
-        .status(400)
-        .json({ error: "Source upload authorization failed." });
+      return sourceError(
+        res,
+        400,
+        "SOURCE_UPLOAD_AUTH_FAILED",
+        "Não foi possível autorizar o upload.",
+      );
     }
   });
   router.post(
@@ -127,7 +202,12 @@ export const createSourceAssetsRouter = () => {
           expected = String(req.headers["x-source-checksum"] ?? ""),
           bytes = new Uint8Array(req.body as Buffer);
         if (!roles.has(role) || !checksum.test(expected))
-          return res.status(400).json({ error: "Invalid source upload." });
+          return sourceError(
+            res,
+            400,
+            "SOURCE_INVALID_FILE",
+            "Arquivo inválido.",
+          );
         await applicationProjectSourceAssetStore.put({
           projectId: req.params.projectId,
           bytes,
@@ -136,9 +216,12 @@ export const createSourceAssetsRouter = () => {
         });
         return res.json({ uploaded: true });
       } catch {
-        return res
-          .status(422)
-          .json({ error: "Source upload failed validation." });
+        return sourceError(
+          res,
+          422,
+          "SOURCE_CHECKSUM_MISMATCH",
+          "O arquivo enviado falhou na validação.",
+        );
       }
     },
   );
@@ -160,9 +243,12 @@ export const createSourceAssetsRouter = () => {
         !body.byteSize ||
         !body.checksum
       )
-        return res
-          .status(400)
-          .json({ error: "Invalid source finalize request." });
+        return sourceError(
+          res,
+          400,
+          "SOURCE_INVALID_FILE",
+          "Dados do arquivo inválidos.",
+        );
       const asset = await finalizeProjectSourceAsset(
         {
           ...body,
@@ -183,10 +269,28 @@ export const createSourceAssetsRouter = () => {
         },
       );
       return res.status(201).json({ asset });
-    } catch {
-      return res
-        .status(422)
-        .json({ error: "Não foi possível validar esta imagem." });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (/not found|unavailable/i.test(message))
+        return sourceError(
+          res,
+          409,
+          "SOURCE_BACKING_UNAVAILABLE",
+          "Arquivo indisponível após envio.",
+        );
+      if (/checksum|media type|size mismatch/i.test(message))
+        return sourceError(
+          res,
+          422,
+          "SOURCE_CHECKSUM_MISMATCH",
+          "O arquivo enviado não corresponde ao esperado.",
+        );
+      return sourceError(
+        res,
+        422,
+        "SOURCE_FINALIZE_FAILED",
+        "Não foi possível concluir o upload.",
+      );
     }
   });
   router.get("/:projectId/source-assets", async (req, res) => {

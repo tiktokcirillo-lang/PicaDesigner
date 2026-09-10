@@ -1,5 +1,211 @@
-import {randomUUID} from "node:crypto";import {neon,type NeonQueryFunction} from "@neondatabase/serverless";import {SOURCE_ASSET_SCHEMA_VERSION,type ProjectSourceAsset,type ProjectSourceAssetRepository} from "../../domain/source-assets/index.js";
-export interface MockSourceAssetDatabase{assets:ProjectSourceAsset[];available:boolean}export const createMockSourceAssetDatabase=():MockSourceAssetDatabase=>({assets:[],available:true});const clone=<T>(v:T):T=>structuredClone(v);
-export class MockProjectSourceAssetRepository implements ProjectSourceAssetRepository{constructor(private db=createMockSourceAssetDatabase()){}private ready(){if(!this.db.available)throw new Error("Source asset metadata unavailable.")}async save(asset:ProjectSourceAsset){this.ready();const prior=this.db.assets.find(x=>x.projectId===asset.projectId&&(x.operationId===asset.operationId||x.assetId===asset.assetId));if(prior)return clone(prior);this.db.assets.push(clone(asset));return clone(asset)}async get(projectId:string,assetId:string){this.ready();const x=this.db.assets.find(a=>a.projectId===projectId&&a.assetId===assetId);return x?clone(x):undefined}async listByProject(projectId:string){this.ready();return clone(this.db.assets.filter(a=>a.projectId===projectId).sort((a,b)=>b.createdAt.localeCompare(a.createdAt)))}async findByChecksum(projectId:string,checksum:string,role?:ProjectSourceAsset["role"]){this.ready();const x=this.db.assets.find(a=>a.projectId===projectId&&a.checksum===checksum&&(!role||a.role===role));return x?clone(x):undefined}async markUnavailable(projectId:string,assetId:string){const x=this.db.assets.find(a=>a.projectId===projectId&&a.assetId===assetId);if(x){x.status="unavailable";x.updatedAt=new Date().toISOString()}}async markSuperseded(projectId:string,assetId:string,replacementId:string){const x=this.db.assets.find(a=>a.projectId===projectId&&a.assetId===assetId);if(x){x.status="superseded";x.updatedAt=new Date().toISOString();x.metadata={...x.metadata,warning:`Superseded by ${replacementId}`}}}async health(){return{status:this.db.available?"ok" as const:"degraded" as const,kind:"memory" as const}}}
-type Row=Record<string,unknown>;const fromRow=(r:Row):ProjectSourceAsset=>({schemaVersion:SOURCE_ASSET_SCHEMA_VERSION,assetId:String(r.asset_id),projectId:String(r.project_id),operationId:String(r.operation_id),role:r.role as ProjectSourceAsset["role"],originalFilename:String(r.original_filename),mediaType:r.media_type as ProjectSourceAsset["mediaType"],byteSize:Number(r.byte_size),width:r.width?Number(r.width):undefined,height:r.height?Number(r.height):undefined,aspectRatio:r.width&&r.height?Number(r.width)/Number(r.height):undefined,checksum:String(r.checksum),backingRef:String(r.backing_ref),status:r.status as ProjectSourceAsset["status"],supersedesAssetId:r.supersedes_asset_id?String(r.supersedes_asset_id):undefined,createdAt:new Date(String(r.created_at)).toISOString(),updatedAt:new Date(String(r.updated_at)).toISOString(),metadata:typeof r.metadata==="string"?JSON.parse(r.metadata) as ProjectSourceAsset["metadata"]:r.metadata as ProjectSourceAsset["metadata"]});
-export class NeonProjectSourceAssetRepository implements ProjectSourceAssetRepository{private sql:NeonQueryFunction<false,false>;constructor(url:string){this.sql=neon(url)}async save(a:ProjectSourceAsset){const rows=await this.sql.query("INSERT INTO project_source_assets(asset_id,project_id,operation_id,role,original_filename,media_type,byte_size,width,height,checksum,backing_ref,status,supersedes_asset_id,metadata,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16) ON CONFLICT(project_id,operation_id) DO UPDATE SET operation_id=EXCLUDED.operation_id RETURNING *",[a.assetId,a.projectId,a.operationId,a.role,a.originalFilename,a.mediaType,a.byteSize,a.width,a.height,a.checksum,a.backingRef,a.status,a.supersedesAssetId,JSON.stringify(a.metadata),a.createdAt,a.updatedAt]);return fromRow(rows[0] as Row)}async get(projectId:string,assetId:string){const rows=await this.sql.query("SELECT * FROM project_source_assets WHERE project_id=$1 AND asset_id=$2",[projectId,assetId]);return rows[0]?fromRow(rows[0] as Row):undefined}async listByProject(projectId:string){return(await this.sql.query("SELECT * FROM project_source_assets WHERE project_id=$1 ORDER BY created_at DESC",[projectId])).map(r=>fromRow(r as Row))}async findByChecksum(projectId:string,checksum:string,role?:ProjectSourceAsset["role"]){const rows=await this.sql.query(role?"SELECT * FROM project_source_assets WHERE project_id=$1 AND checksum=$2 AND role=$3 ORDER BY created_at DESC LIMIT 1":"SELECT * FROM project_source_assets WHERE project_id=$1 AND checksum=$2 ORDER BY created_at DESC LIMIT 1",role?[projectId,checksum,role]:[projectId,checksum]);return rows[0]?fromRow(rows[0] as Row):undefined}async markUnavailable(projectId:string,assetId:string){await this.sql.query("UPDATE project_source_assets SET status='unavailable',updated_at=now() WHERE project_id=$1 AND asset_id=$2",[projectId,assetId])}async markSuperseded(projectId:string,assetId:string,replacementId:string){await this.sql.query("UPDATE project_source_assets SET status='superseded',updated_at=now() WHERE project_id=$1 AND asset_id=$2",[projectId,assetId])}async health(){try{await this.sql.query("SELECT 1");return{status:"ok" as const,kind:"durable" as const}}catch{return{status:"degraded" as const,kind:"durable" as const}}}static id(checksum:string,role:string){return`source_${role}_${checksum.slice(0,20)}_${randomUUID().slice(0,8)}`}}
+import { randomUUID } from "node:crypto";
+import { neon, type NeonQueryFunction } from "@neondatabase/serverless";
+import {
+  SOURCE_ASSET_SCHEMA_VERSION,
+  type ProjectSourceAsset,
+  type ProjectSourceAssetRepository,
+} from "../../domain/source-assets/index.js";
+export interface MockSourceAssetDatabase {
+  assets: ProjectSourceAsset[];
+  available: boolean;
+}
+export const createMockSourceAssetDatabase = (): MockSourceAssetDatabase => ({
+  assets: [],
+  available: true,
+});
+const clone = <T>(v: T): T => structuredClone(v);
+export class MockProjectSourceAssetRepository implements ProjectSourceAssetRepository {
+  constructor(private db = createMockSourceAssetDatabase()) {}
+  private ready() {
+    if (!this.db.available)
+      throw new Error("Source asset metadata unavailable.");
+  }
+  async save(asset: ProjectSourceAsset) {
+    this.ready();
+    const index = this.db.assets.findIndex(
+      (x) =>
+        x.projectId === asset.projectId &&
+        (x.operationId === asset.operationId || x.assetId === asset.assetId),
+    );
+    if (index >= 0) {
+      const prior = this.db.assets[index]!;
+      if (prior.role === asset.role && prior.checksum === asset.checksum) {
+        this.db.assets[index] = clone(asset);
+        return clone(asset);
+      }
+      return clone(prior);
+    }
+    this.db.assets.push(clone(asset));
+    return clone(asset);
+  }
+  async get(projectId: string, assetId: string) {
+    this.ready();
+    const x = this.db.assets.find(
+      (a) => a.projectId === projectId && a.assetId === assetId,
+    );
+    return x ? clone(x) : undefined;
+  }
+  async listByProject(projectId: string) {
+    this.ready();
+    return clone(
+      this.db.assets
+        .filter((a) => a.projectId === projectId)
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
+    );
+  }
+  async findByChecksum(
+    projectId: string,
+    checksum: string,
+    role?: ProjectSourceAsset["role"],
+  ) {
+    this.ready();
+    const x = this.db.assets.find(
+      (a) =>
+        a.projectId === projectId &&
+        a.checksum === checksum &&
+        (!role || a.role === role),
+    );
+    return x ? clone(x) : undefined;
+  }
+  async markUnavailable(projectId: string, assetId: string) {
+    const x = this.db.assets.find(
+      (a) => a.projectId === projectId && a.assetId === assetId,
+    );
+    if (x) {
+      x.status = "unavailable";
+      x.updatedAt = new Date().toISOString();
+    }
+  }
+  async markSuperseded(
+    projectId: string,
+    assetId: string,
+    replacementId: string,
+  ) {
+    const x = this.db.assets.find(
+      (a) => a.projectId === projectId && a.assetId === assetId,
+    );
+    if (x) {
+      x.status = "superseded";
+      x.updatedAt = new Date().toISOString();
+      x.metadata = { ...x.metadata, warning: `Superseded by ${replacementId}` };
+    }
+  }
+  async health() {
+    return {
+      status: this.db.available ? ("ok" as const) : ("degraded" as const),
+      kind: "memory" as const,
+    };
+  }
+}
+type Row = Record<string, unknown>;
+const fromRow = (r: Row): ProjectSourceAsset => ({
+  schemaVersion: SOURCE_ASSET_SCHEMA_VERSION,
+  assetId: String(r.asset_id),
+  projectId: String(r.project_id),
+  operationId: String(r.operation_id),
+  role: r.role as ProjectSourceAsset["role"],
+  originalFilename: String(r.original_filename),
+  mediaType: r.media_type as ProjectSourceAsset["mediaType"],
+  byteSize: Number(r.byte_size),
+  width: r.width ? Number(r.width) : undefined,
+  height: r.height ? Number(r.height) : undefined,
+  aspectRatio:
+    r.width && r.height ? Number(r.width) / Number(r.height) : undefined,
+  checksum: String(r.checksum),
+  backingRef: String(r.backing_ref),
+  status: r.status as ProjectSourceAsset["status"],
+  supersedesAssetId: r.supersedes_asset_id
+    ? String(r.supersedes_asset_id)
+    : undefined,
+  createdAt: new Date(String(r.created_at)).toISOString(),
+  updatedAt: new Date(String(r.updated_at)).toISOString(),
+  metadata:
+    typeof r.metadata === "string"
+      ? (JSON.parse(r.metadata) as ProjectSourceAsset["metadata"])
+      : (r.metadata as ProjectSourceAsset["metadata"]),
+});
+export class NeonProjectSourceAssetRepository implements ProjectSourceAssetRepository {
+  private sql: NeonQueryFunction<false, false>;
+  constructor(url: string) {
+    this.sql = neon(url);
+  }
+  async save(a: ProjectSourceAsset) {
+    const rows = await this.sql.query(
+      "INSERT INTO project_source_assets(asset_id,project_id,operation_id,role,original_filename,media_type,byte_size,width,height,checksum,backing_ref,status,supersedes_asset_id,metadata,created_at,updated_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14::jsonb,$15,$16) ON CONFLICT(project_id,operation_id) DO UPDATE SET original_filename=EXCLUDED.original_filename,media_type=EXCLUDED.media_type,byte_size=EXCLUDED.byte_size,width=EXCLUDED.width,height=EXCLUDED.height,checksum=EXCLUDED.checksum,backing_ref=EXCLUDED.backing_ref,status=EXCLUDED.status,supersedes_asset_id=EXCLUDED.supersedes_asset_id,metadata=EXCLUDED.metadata,updated_at=EXCLUDED.updated_at RETURNING *",
+      [
+        a.assetId,
+        a.projectId,
+        a.operationId,
+        a.role,
+        a.originalFilename,
+        a.mediaType,
+        a.byteSize,
+        a.width,
+        a.height,
+        a.checksum,
+        a.backingRef,
+        a.status,
+        a.supersedesAssetId,
+        JSON.stringify(a.metadata),
+        a.createdAt,
+        a.updatedAt,
+      ],
+    );
+    return fromRow(rows[0] as Row);
+  }
+  async get(projectId: string, assetId: string) {
+    const rows = await this.sql.query(
+      "SELECT * FROM project_source_assets WHERE project_id=$1 AND asset_id=$2",
+      [projectId, assetId],
+    );
+    return rows[0] ? fromRow(rows[0] as Row) : undefined;
+  }
+  async listByProject(projectId: string) {
+    return (
+      await this.sql.query(
+        "SELECT * FROM project_source_assets WHERE project_id=$1 ORDER BY created_at DESC",
+        [projectId],
+      )
+    ).map((r) => fromRow(r as Row));
+  }
+  async findByChecksum(
+    projectId: string,
+    checksum: string,
+    role?: ProjectSourceAsset["role"],
+  ) {
+    const rows = await this.sql.query(
+      role
+        ? "SELECT * FROM project_source_assets WHERE project_id=$1 AND checksum=$2 AND role=$3 ORDER BY created_at DESC LIMIT 1"
+        : "SELECT * FROM project_source_assets WHERE project_id=$1 AND checksum=$2 ORDER BY created_at DESC LIMIT 1",
+      role ? [projectId, checksum, role] : [projectId, checksum],
+    );
+    return rows[0] ? fromRow(rows[0] as Row) : undefined;
+  }
+  async markUnavailable(projectId: string, assetId: string) {
+    await this.sql.query(
+      "UPDATE project_source_assets SET status='unavailable',updated_at=now() WHERE project_id=$1 AND asset_id=$2",
+      [projectId, assetId],
+    );
+  }
+  async markSuperseded(
+    projectId: string,
+    assetId: string,
+    replacementId: string,
+  ) {
+    await this.sql.query(
+      "UPDATE project_source_assets SET status='superseded',updated_at=now() WHERE project_id=$1 AND asset_id=$2",
+      [projectId, assetId],
+    );
+  }
+  async health() {
+    try {
+      await this.sql.query("SELECT 1");
+      return { status: "ok" as const, kind: "durable" as const };
+    } catch {
+      return { status: "degraded" as const, kind: "durable" as const };
+    }
+  }
+  static id(checksum: string, role: string) {
+    return `source_${role}_${checksum.slice(0, 20)}_${randomUUID().slice(0, 8)}`;
+  }
+}

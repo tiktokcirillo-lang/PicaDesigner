@@ -2,6 +2,7 @@ export class ApiClientError extends Error {
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
     this.name = status === 409 ? "ConflictError" : "ApiClientError";
@@ -16,11 +17,15 @@ export async function parseApiResponse<T>(response: Response): Promise<T> {
       response.status,
     );
   }
-  const payload = (await response.json()) as T & { error?: string };
+  const payload = (await response.json()) as T & {
+    error?: string;
+    code?: string;
+  };
   if (!response.ok)
     throw new ApiClientError(
       payload.error ?? `Falha HTTP ${response.status}.`,
       response.status,
+      payload.code,
     );
   return payload;
 }
