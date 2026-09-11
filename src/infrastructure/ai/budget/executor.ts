@@ -13,7 +13,10 @@ import type {
   AIStructuredResponse,
   ProjectCostLedger,
 } from "../types.js";
-import { AITimeoutError } from "../providers/errors.js";
+import {
+  AIIdempotencyConflictError,
+  AITimeoutError,
+} from "../providers/errors.js";
 import type { VisualInput } from "../../../domain/visual-forensics/index.js";
 import { assertMetadataOnly } from "../../../domain/project-persistence/index.js";
 
@@ -84,15 +87,38 @@ export const stableOperationId = (
   return `aiop:${sha256(JSON.stringify(payload)).slice(0, 40)}`;
 };
 
+export const LEGACY_OPERATION_RECOVERY_POLICY = "legacy-missing-result-v1";
+export const legacyRecoveryOperationId = (originalOperationId: string) =>
+  `aiop-recovery:${sha256(
+    JSON.stringify({
+      originalOperationId,
+      recoveryPolicy: LEGACY_OPERATION_RECOVERY_POLICY,
+    }),
+  ).slice(0, 40)}`;
+
+export interface LegacyRecoveryTelemetryEvent {
+  event: "legacy_ai_operation_recovery";
+  projectId: string;
+  stage: AIStage;
+  originalOperationFingerprint: string;
+  recoveryOperationFingerprint: string;
+  status: "started" | "result_reused";
+}
+
 export interface BudgetedExecutorOptions {
   monthlyLimitUsd?: number;
   safetyFactor?: number;
   ttlSeconds?: number;
   stage?: AIStage;
   stageLimitUsd?: number;
+  onLegacyRecovery?: (event: LegacyRecoveryTelemetryEvent) => void;
 }
 export class BudgetedAIExecutor {
   private readonly coordinator: ProjectAIBudgetCoordinator;
+  private recordLegacyRecovery(event: LegacyRecoveryTelemetryEvent) {
+    if (this.options.onLegacyRecovery) this.options.onLegacyRecovery(event);
+    else console.info("[ai-telemetry]", JSON.stringify(event));
+  }
   constructor(
     private readonly provider: AIProvider,
     store: BudgetStore,
@@ -123,10 +149,11 @@ export class BudgetedAIExecutor {
         request.pass === "sol_critic"
           ? "senior_critic"
           : (this.options.stage ?? stageFor(request.pass)),
-      operationId = stableOperationId(request, stage);
-    const recovered =
-      await this.coordinator.budgetStore.getOperationResult(operationId);
-    if (recovered) {
+      baseOperationId = stableOperationId(request, stage);
+    let operationId = baseOperationId;
+    let legacyRecovery = false;
+    const recover = async (recovered: Awaited<ReturnType<BudgetStore["getOperationResult"]>>) => {
+      if (!recovered) return undefined;
       if (recovered.projectId !== request.projectId)
         throw new Error("AI operation result project mismatch.");
       if (!recovered.budgetCommitted) {
@@ -142,6 +169,49 @@ export class BudgetedAIExecutor {
         this.ledger =
           (await this.coordinator.ledger(request.projectId)) ?? this.ledger;
       return structuredClone(recovered.response) as AIStructuredResponse<T>;
+    };
+    const recovered = await recover(
+      await this.coordinator.budgetStore.getOperationResult(baseOperationId),
+    );
+    if (recovered) {
+      return recovered;
+    }
+    const baseState =
+      await this.coordinator.budgetStore.getOperationState(baseOperationId);
+    if (
+      baseState?.status === "reserved" ||
+      baseState?.status === "unknown_provider_outcome"
+    )
+      throw new AIIdempotencyConflictError(
+        "An identical AI operation is already in progress.",
+      );
+    if (baseState?.status === "committed") {
+      legacyRecovery = true;
+      operationId = legacyRecoveryOperationId(baseOperationId);
+      const recoveryResult = await recover(
+        await this.coordinator.budgetStore.getOperationResult(operationId),
+      );
+      if (recoveryResult) {
+        this.recordLegacyRecovery({
+          event: "legacy_ai_operation_recovery",
+          projectId: request.projectId,
+          stage,
+          originalOperationFingerprint: baseOperationId.slice(-12),
+          recoveryOperationFingerprint: operationId.slice(-12),
+          status: "result_reused",
+        });
+        return recoveryResult;
+      }
+      const recoveryState =
+        await this.coordinator.budgetStore.getOperationState(operationId);
+      if (
+        recoveryState?.status === "reserved" ||
+        recoveryState?.status === "unknown_provider_outcome" ||
+        recoveryState?.status === "committed"
+      )
+        throw new AIIdempotencyConflictError(
+          "AI operation recovery is already in progress.",
+        );
     }
     const sinkHealth = await this.coordinator.budgetStore.health();
     if (sinkHealth.status !== "ok" || !sinkHealth.atomicReservations)
@@ -153,6 +223,15 @@ export class BudgetedAIExecutor {
       stageLimitUsd: this.options.stageLimitUsd,
       operationId,
     });
+    if (legacyRecovery)
+      this.recordLegacyRecovery({
+        event: "legacy_ai_operation_recovery",
+        projectId: request.projectId,
+        stage,
+        originalOperationFingerprint: baseOperationId.slice(-12),
+        recoveryOperationFingerprint: operationId.slice(-12),
+        status: "started",
+      });
     let providerCompleted = false;
     try {
       const response = await this.provider.generateStructured<T>(request),

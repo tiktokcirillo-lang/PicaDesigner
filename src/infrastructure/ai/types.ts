@@ -130,6 +130,16 @@ export interface BudgetReservation {
   expiresAt: string;
   status: BudgetReservationStatus;
 }
+/** Safe, storage-agnostic metadata used to distinguish active and legacy operations. */
+export interface AIOperationState {
+  operationId: string;
+  reservationId: string;
+  projectId: string;
+  stage: AIStage;
+  status: BudgetReservationStatus;
+  createdAt: string;
+  expiresAt: string;
+}
 export interface BudgetReservationRequest {
   projectId: string;
   month: string;

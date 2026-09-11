@@ -30,6 +30,9 @@ export class UnavailableBudgetStore implements BudgetStore {
   async getOperationResult() {
     return this.fail();
   }
+  async getOperationState() {
+    return this.fail();
+  }
   async saveOperationResult() {
     return this.fail();
   }

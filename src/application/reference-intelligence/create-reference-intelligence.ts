@@ -22,6 +22,20 @@ export const validateReferenceSession = (value: unknown, projectId?: string): va
     && Boolean(session.designDNA && validateDesignDNA(session.designDNA).success);
 };
 
+export const isReusableReferenceCheckpoint = (
+  value: unknown,
+  input: {
+    projectId: string;
+    imageFingerprint?: string;
+    analysisDepth: import("../../domain/visual-forensics/index.js").AnalysisDepth;
+  },
+): value is ReferenceIntelligenceSession =>
+  validateReferenceSession(value, input.projectId) &&
+  Boolean(input.imageFingerprint) &&
+  value.source.imageFingerprint === input.imageFingerprint &&
+  value.analysisDepth === input.analysisDepth &&
+  (value.status === "ready" || value.status === "partial");
+
 export const createReferenceIntelligence = async (request: CreateReferenceIntelligenceRequest, dependencies: ReferenceIntelligenceDependencies): Promise<ReferenceIntelligenceSession> => {
   if (request.image.kind === 'url') throw new Error('Remote reference URLs are not supported.');
   const analysisDepth = request.analysisDepth ?? 'standard';

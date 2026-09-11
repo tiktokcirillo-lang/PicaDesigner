@@ -1,6 +1,7 @@
 import type {
   AIMonthlyBudget,
   AIModelCall,
+  AIOperationState,
   AIOperationResult,
   BudgetReservation,
   BudgetReservationRequest,
@@ -21,6 +22,9 @@ export interface BudgetStore {
   getOperationResult(
     operationId: string,
   ): Promise<AIOperationResult | undefined>;
+  getOperationState(
+    operationId: string,
+  ): Promise<AIOperationState | undefined>;
   saveOperationResult(result: AIOperationResult): Promise<void>;
   getUsageSnapshot(
     projectId: string,

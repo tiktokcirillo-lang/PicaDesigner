@@ -6,6 +6,7 @@ import {
 } from "../../providers/errors.js";
 import type {
   AIModelCall,
+  AIOperationState,
   AIOperationResult,
   AIMonthlyBudget,
   BudgetReservation,
@@ -280,6 +281,39 @@ export class UpstashBudgetStore implements BudgetStore {
       return typeof raw === "string"
         ? (JSON.parse(raw) as AIOperationResult)
         : (raw as unknown as AIOperationResult);
+    });
+  }
+  async getOperationState(
+    operationId: string,
+  ): Promise<AIOperationState | undefined> {
+    return this.safe(async () => {
+      const reservationId = await this.redis.get<string>(
+        operationKey(operationId),
+      );
+      if (!reservationId) return undefined;
+      const raw = await this.redis.get<string>(
+        reservationKey(String(reservationId)),
+      );
+      if (!raw) return undefined;
+      const reservation =
+        typeof raw === "string"
+          ? (JSON.parse(raw) as BudgetReservation)
+          : (raw as unknown as BudgetReservation);
+      const status =
+        (reservation.status === "reserved" ||
+          reservation.status === "unknown_provider_outcome") &&
+        Date.parse(reservation.expiresAt) <= Date.now()
+          ? "expired"
+          : reservation.status;
+      return {
+        operationId,
+        reservationId: reservation.reservationId,
+        projectId: reservation.projectId,
+        stage: reservation.stage,
+        status,
+        createdAt: reservation.createdAt,
+        expiresAt: reservation.expiresAt,
+      };
     });
   }
   async saveOperationResult(result: AIOperationResult) {

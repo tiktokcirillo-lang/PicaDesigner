@@ -18,6 +18,7 @@ import { createStructuredAIProvider } from "../../infrastructure/ai/providers/fa
 import type { VisualForensicsInput } from "../../domain/visual-forensics/index.js";
 import {
   createReferenceIntelligence,
+  isReusableReferenceCheckpoint,
   type ReferenceSourceMetadata,
 } from "../../application/reference-intelligence/index.js";
 import {
@@ -27,6 +28,7 @@ import {
 import { reconcileProjectSourceAsset } from "../../application/source-assets/index.js";
 import { assertPaidAISinkReadiness } from "../services/ai-readiness.js";
 import { PersistenceUnavailableError } from "../../domain/project-persistence/index.js";
+import { applicationProjectRepository } from "../../infrastructure/project-persistence/index.js";
 
 export const createVisualForensicsRouter = (dependencies: {
   createProvider?: typeof createStructuredAIProvider;
@@ -89,6 +91,19 @@ export const createVisualForensicsRouter = (dependencies: {
         return response
           .status(400)
           .json({ error: "Visual reference is required." });
+      const analysisDepth = body.analysisDepth ?? "standard";
+      const referenceCheckpoint = (
+        await applicationProjectRepository.getLatestWorkflow(body.projectId)
+      ).find((checkpoint) => checkpoint.stage === "reference_intelligence")
+        ?.payload;
+      if (
+        isReusableReferenceCheckpoint(referenceCheckpoint, {
+          projectId: body.projectId,
+          imageFingerprint: imageMetadata?.imageFingerprint,
+          analysisDepth,
+        })
+      )
+        return response.json(referenceCheckpoint);
       await assertPaidAISinkReadiness();
       const config = loadOpenAIConfig();
       const provider = (dependencies.createProvider ?? createStructuredAIProvider)({ config });
@@ -97,7 +112,7 @@ export const createVisualForensicsRouter = (dependencies: {
           image,
           projectId: body.projectId,
           imageMetadata,
-          analysisDepth: body.analysisDepth,
+          analysisDepth,
           semanticExclusions: body.semanticExclusions,
           context: body.context,
         },

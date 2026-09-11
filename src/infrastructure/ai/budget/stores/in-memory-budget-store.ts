@@ -4,6 +4,7 @@ import {
 } from "../../providers/errors.js";
 import type {
   AIModelCall,
+  AIOperationState,
   AIOperationResult,
   AIStage,
   AIMonthlyBudget,
@@ -190,6 +191,24 @@ export class InMemoryBudgetStore implements BudgetStore {
   async getOperationResult(operationId: string) {
     const value = this.operationResults.get(operationId);
     return value ? structuredClone(value) : undefined;
+  }
+  async getOperationState(
+    operationId: string,
+  ): Promise<AIOperationState | undefined> {
+    this.expire();
+    const reservationId = this.operations.get(operationId);
+    if (!reservationId) return undefined;
+    const value = this.reservations.get(reservationId);
+    if (!value) return undefined;
+    return structuredClone({
+      operationId,
+      reservationId: value.reservationId,
+      projectId: value.projectId,
+      stage: value.stage,
+      status: value.status,
+      createdAt: value.createdAt,
+      expiresAt: value.expiresAt,
+    });
   }
   async saveOperationResult(result: AIOperationResult) {
     this.operationResults.set(result.operationId, structuredClone(result));
