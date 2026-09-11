@@ -13,7 +13,7 @@ import {
   safeErrorMessage,
 } from "../../infrastructure/ai/providers/errors.js";
 import { loadOpenAIConfig } from "../../infrastructure/ai/providers/openai/config.js";
-import { OpenAIProvider } from "../../infrastructure/ai/providers/openai/responses.js";
+import { createStructuredAIProvider } from "../../infrastructure/ai/providers/factory.js";
 import { assertPaidAISinkReadiness } from "../services/ai-readiness.js";
 import { PersistenceUnavailableError } from "../../domain/project-persistence/index.js";
 
@@ -50,7 +50,9 @@ const sendError = (response: Response, error: unknown) => {
     });
 };
 
-export const createCreativeDirectionRouter = (): Router => {
+export const createCreativeDirectionRouter = (dependencies: {
+  createProvider?: typeof createStructuredAIProvider;
+} = {}): Router => {
   const router = Router();
   router.post("/generate", async (request, response) => {
     try {
@@ -74,7 +76,7 @@ export const createCreativeDirectionRouter = (): Router => {
       return response.json(
         await createCreativeDirection(body as CreativeDirectionRequest, {
           config,
-          provider: new OpenAIProvider(config),
+          provider: (dependencies.createProvider ?? createStructuredAIProvider)({ config }),
           budgetStore,
         }),
       );

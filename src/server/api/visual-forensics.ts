@@ -14,7 +14,7 @@ import {
   safeErrorMessage,
 } from "../../infrastructure/ai/providers/errors.js";
 import { loadOpenAIConfig } from "../../infrastructure/ai/providers/openai/config.js";
-import { OpenAIProvider } from "../../infrastructure/ai/providers/openai/responses.js";
+import { createStructuredAIProvider } from "../../infrastructure/ai/providers/factory.js";
 import type { VisualForensicsInput } from "../../domain/visual-forensics/index.js";
 import {
   createReferenceIntelligence,
@@ -28,7 +28,9 @@ import { reconcileProjectSourceAsset } from "../../application/source-assets/ind
 import { assertPaidAISinkReadiness } from "../services/ai-readiness.js";
 import { PersistenceUnavailableError } from "../../domain/project-persistence/index.js";
 
-export const createVisualForensicsRouter = (): Router => {
+export const createVisualForensicsRouter = (dependencies: {
+  createProvider?: typeof createStructuredAIProvider;
+} = {}): Router => {
   const router = Router();
   router.post("/analyze", async (request, response) => {
     try {
@@ -89,7 +91,7 @@ export const createVisualForensicsRouter = (): Router => {
           .json({ error: "Visual reference is required." });
       await assertPaidAISinkReadiness();
       const config = loadOpenAIConfig();
-      const provider = new OpenAIProvider(config);
+      const provider = (dependencies.createProvider ?? createStructuredAIProvider)({ config });
       const session = await createReferenceIntelligence(
         {
           image,

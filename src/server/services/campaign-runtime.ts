@@ -4,7 +4,7 @@ import { applicationBudgetStore } from "../../infrastructure/ai/budget/runtime-s
 import { ProjectAIBudgetCoordinator } from "../../infrastructure/ai/budget/project-coordinator.js";
 import { createOpenAIClient } from "../../infrastructure/ai/providers/openai/client.js";
 import { loadOpenAIConfig } from "../../infrastructure/ai/providers/openai/config.js";
-import { OpenAIProvider } from "../../infrastructure/ai/providers/openai/responses.js";
+import { createStructuredAIProvider } from "../../infrastructure/ai/providers/factory.js";
 import {
   createArtDirectorReview,
   OpenAISeniorArtDirectorCritic,
@@ -68,7 +68,7 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
         executor = e2eMock
           ? undefined
           : new BudgetedAIExecutor(
-              new OpenAIProvider(config),
+              createStructuredAIProvider({ config }),
               applicationBudgetStore,
               config.maxProjectCostUsd,
               ledger,
@@ -167,7 +167,7 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
               (process.env.AI_VISUAL_QA_MOCK_SCENARIO ?? "approved") as never,
             )
           : new OpenAIPostRenderVisualQaProvider(
-              new OpenAIProvider(config),
+              createStructuredAIProvider({ config }),
               config.postRenderQaModel,
               config.postRenderQaMaxImages,
             ),
@@ -213,7 +213,7 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
                 "regeneration_success") as never,
             )
           : new OpenAIPostRenderVisualQaProvider(
-              new OpenAIProvider(config),
+              createStructuredAIProvider({ config }),
               config.postRenderQaModel,
               config.postRenderQaMaxImages,
             ),

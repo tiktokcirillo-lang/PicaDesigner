@@ -5,7 +5,7 @@ import {
   type EnsurePostRenderReviewRequest,
 } from "../../application/post-render-review/index.js";
 import {
-  OpenAIProvider,
+  createStructuredAIProvider,
   ProjectAIBudgetCoordinator,
   applicationBudgetStore,
   createOpenAIClient,
@@ -65,7 +65,7 @@ export const createVisualQaRouter = () => {
               (process.env.AI_VISUAL_QA_MOCK_SCENARIO ?? "approved") as never,
             )
           : new OpenAIPostRenderVisualQaProvider(
-              new OpenAIProvider(config),
+              createStructuredAIProvider({ config }),
               model,
               config.postRenderQaMaxImages,
             ),
@@ -189,7 +189,7 @@ export const createVisualQaRouter = () => {
                 "regeneration_success") as never,
             )
           : new OpenAIPostRenderVisualQaProvider(
-              new OpenAIProvider(config),
+              createStructuredAIProvider({ config }),
               model,
               config.postRenderQaMaxImages,
             ),

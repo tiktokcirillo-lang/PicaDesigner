@@ -3,7 +3,7 @@ import { createLedger } from "../../infrastructure/ai/budget/budget-tracker.js";
 import { BudgetedAIExecutor } from "../../infrastructure/ai/budget/executor.js";
 import { applicationBudgetStore } from "../../infrastructure/ai/budget/runtime-store.js";
 import { loadOpenAIConfig } from "../../infrastructure/ai/providers/openai/config.js";
-import { OpenAIProvider } from "../../infrastructure/ai/providers/openai/responses.js";
+import { createStructuredAIProvider } from "../../infrastructure/ai/providers/factory.js";
 import {
   AIIdempotencyConflictError,
   safeErrorMessage,
@@ -32,7 +32,7 @@ export const createArtDirectorReviewRouter = () => {
           (await applicationBudgetStore.getProject(body.projectId)) ??
           createLedger(body.projectId),
         executor = new BudgetedAIExecutor(
-          new OpenAIProvider(config),
+          createStructuredAIProvider({ config }),
           applicationBudgetStore,
           config.maxProjectCostUsd,
           ledger,

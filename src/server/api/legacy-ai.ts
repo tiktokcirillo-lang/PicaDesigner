@@ -16,7 +16,7 @@ import {
   safeErrorMessage,
 } from "../../infrastructure/ai/providers/errors.js";
 import { loadOpenAIConfig } from "../../infrastructure/ai/providers/openai/config.js";
-import { OpenAIProvider } from "../../infrastructure/ai/providers/openai/responses.js";
+import { createStructuredAIProvider } from "../../infrastructure/ai/providers/factory.js";
 import type { VisualInput } from "../../domain/visual-forensics/index.js";
 import type { GenerateDesignSpecRequest } from "../../application/design-spec/index.js";
 
@@ -44,7 +44,7 @@ const sendError = (response: Response, error: unknown) => {
 
 const dependencies = () => {
   const config = loadOpenAIConfig();
-  return { config, provider: new OpenAIProvider(config), budgetStore };
+  return { config, provider: createStructuredAIProvider({ config }), budgetStore };
 };
 
 export const createLegacyAIRouter = (): Router => {

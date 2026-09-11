@@ -92,9 +92,22 @@ async function preflight(
       config.maxProjectCostUsd,
       config.monthlyBudgetUsd,
     ),
-    hasResolvedSourceAsset = state.assets.some((asset) =>
-      ["product_image", "brand_photo", "graphic_asset"].includes(asset.role),
+    visualRoles = new Set(
+      family?.variants.flatMap((variant) =>
+        (variant.layoutPlan?.elements ?? [])
+          .filter((element) => element.mandatory && ["product", "hero_image", "human"].includes(element.role))
+          .map((element) => element.role),
+      ) ?? [],
     ),
+    sourceAssetResolution = !family || visualRoles.size === 0
+      ? "conditional" as const
+      : [...visualRoles].every((role) => state.assets.some((asset) =>
+          role === "product"
+            ? asset.role === "product_image"
+            : ["brand_photo", "graphic_asset"].includes(asset.role),
+        ))
+        ? "resolved" as const
+        : "missing" as const,
     hasReusableGeneratedAsset = Boolean(
       family?.variants.some((variant) => variant.imageAssetSessionId),
     );
@@ -107,7 +120,8 @@ async function preflight(
     qaCostUsd: config.postRenderQaTargetUsd,
     imageCostUsd: retry ? 0 : Math.min(config.imageGenerationTargetUsd, 0.22),
     verificationCostUsd: config.postRenderQaTargetUsd,
-    hasResolvedSourceAsset,
+    hasResolvedSourceAsset: sourceAssetResolution === "resolved",
+    sourceAssetResolution,
     hasReusableGeneratedAsset,
   });
 }
@@ -191,6 +205,9 @@ export const createCampaignVariantsRouter = () => {
         return res.json({ family: safe(family), cacheHit: true });
       if (
         family.status === "running" &&
+        family.variants.some((variant) =>
+          variant.readiness.review || variant.readiness.render || variant.readiness.visualQa,
+        ) &&
         Date.now() - Date.parse(family.updatedAt) < 10 * 60_000
       )
         return res
