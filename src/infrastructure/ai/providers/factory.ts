@@ -45,6 +45,14 @@ export interface StructuredAIProviderFactoryOptions {
   mockFactory?: MockResponseFactory;
   instrumentation?: AIProviderInstrumentation;
 }
+let testInstrumentation: AIProviderInstrumentation | undefined;
+export const setStructuredAIProviderInstrumentationForTests = (
+  instrumentation?: AIProviderInstrumentation,
+): void => {
+  if (process.env.NODE_ENV === "production")
+    throw new Error("AI provider test instrumentation is forbidden in production.");
+  testInstrumentation = instrumentation;
+};
 
 const defaultMockResponse: MockResponseFactory = (request) => {
   if (request.pass === "creative_direction") {
@@ -69,7 +77,7 @@ const defaultMockResponse: MockResponseFactory = (request) => {
       confidence: 0.9, provenance: [{ decision: "Core idea", source: "creative_concept", confidence: 0.9 }], declaredHardViolations: [], inventedClaims: [], literalReferenceTraits: [], declaredBrandDriftTraits: [],
     });
     return {
-      strategicFrame: { communicationProblem: "Communicate clearly.", communicationOpportunity: "Create memorable clarity.", singleMindedProposition: "Approved copy.", desiredResponse: "Understand and act.", messageHierarchy: [], brandRole: "Respect brand.", referenceRole: "Transfer principles.", formatRole: "Adapt natively.", creativeOpportunity: "Differentiate coherently.", confidence: 0.9 },
+      strategicFrame: { communicationProblem: "Communicate clearly.", communicationOpportunity: "Create memorable clarity.", singleMindedProposition: "Approved copy.", desiredResponse: "Understand and act.", messageHierarchy: approvedHierarchy, brandRole: "Respect brand.", referenceRole: "Transfer principles.", formatRole: "Adapt natively.", creativeOpportunity: "Differentiate coherently.", confidence: 0.9 },
       routes: [route("mock-a", [.05,.05,.05,.05,.05,.05,.05,.05,.05]), route("mock-b", [.05,.95,.05,.95,.05,.95,.05,.95,.05]), route("mock-c", [.95,.95,.95,.95,.95,.95,.95,.95,.95])],
     };
   }
@@ -138,7 +146,8 @@ export const createStructuredAIProvider = (
         outputTokens: 0,
       })
     : new OpenAIProvider(options.config);
-  return options.instrumentation
-    ? new InstrumentedProvider(provider, options.instrumentation)
+  const instrumentation = options.instrumentation ?? testInstrumentation;
+  return instrumentation
+    ? new InstrumentedProvider(provider, instrumentation)
     : provider;
 };

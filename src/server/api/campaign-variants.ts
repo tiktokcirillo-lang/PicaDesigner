@@ -294,6 +294,10 @@ export const createCampaignVariantsRouter = () => {
             error.message === "campaign_upstream_revision_required"
               ? error.message
               : "Campaign execution failed safely.",
+          ...(process.env.PICADESIGNER_E2E_PROVIDER_MODE === "mock" &&
+          process.env.NODE_ENV !== "production" && error instanceof Error
+            ? { testError: error.message }
+            : {}),
         });
     }
   });

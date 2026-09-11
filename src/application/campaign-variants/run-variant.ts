@@ -140,6 +140,9 @@ export async function runCampaignVariant(
           upstream
             ? "campaign_upstream_revision_required"
             : "pre_render_review_blocked",
+          ...review.localAudit.blockers.map(
+            (blocker) => `review_blocker:${blocker.id}`,
+          ),
         ],
         reviewSessionId: review.sessionId,
         lineage: {

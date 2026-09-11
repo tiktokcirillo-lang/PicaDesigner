@@ -35,6 +35,33 @@ import {
   applicationProjectSourceAssetStore,
 } from "../../infrastructure/source-assets/index.js";
 import { assertPaidAISinkReadiness } from "./ai-readiness.js";
+export interface CampaignRuntimeTestInstrumentation {
+  mockImageProviderCalls: number;
+  mockQaCalls: number;
+  mockCriticCalls: number;
+}
+let testInstrumentation: CampaignRuntimeTestInstrumentation | undefined;
+export const setCampaignRuntimeInstrumentationForTests = (
+  instrumentation?: CampaignRuntimeTestInstrumentation,
+): void => {
+  if (process.env.NODE_ENV === "production")
+    throw new Error("Campaign runtime test instrumentation is forbidden in production.");
+  testInstrumentation = instrumentation;
+};
+const stripBinaryMetadata = <T>(value: T): T => {
+  const visit = (item: unknown): unknown => {
+    if (item instanceof Uint8Array || item instanceof ArrayBuffer) return undefined;
+    if (Array.isArray(item)) return item.map(visit).filter((entry) => entry !== undefined);
+    if (item && typeof item === "object")
+      return Object.fromEntries(
+        Object.entries(item)
+          .map(([key, entry]) => [key, visit(entry)] as const)
+          .filter(([, entry]) => entry !== undefined),
+      );
+    return item;
+  };
+  return visit(value) as T;
+};
 export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEngineAdapters> {
   await assertPaidAISinkReadiness();
   const config = loadOpenAIConfig(),
@@ -62,6 +89,7 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
       reference,
       formatId,
     }) => {
+      if (e2eMock && testInstrumentation) testInstrumentation.mockCriticCalls += 1;
       const ledger =
           (await applicationBudgetStore.getProject(projectId)) ??
           createLedger(projectId),
@@ -147,6 +175,7 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
             storageMaxRetries: config.assetStorageMaxRetries,
           },
         );
+      if (mockImage && testInstrumentation) testInstrumentation.mockImageProviderCalls += 1;
       return {
         render: session.renderSession,
         registry: session.registry,
@@ -162,6 +191,7 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
       existing,
       correctionAllowed,
     }) => {
+      if (mockQa && testInstrumentation) testInstrumentation.mockQaCalls += 1;
       const raw = mockQa
           ? new MockPostRenderVisualQaProvider(
               (process.env.AI_VISUAL_QA_MOCK_SCENARIO ?? "approved") as never,
@@ -262,7 +292,7 @@ export async function createCampaignRuntimeAdapters(): Promise<CampaignVariantEn
         operationId: `campaign-authority:${family.familyId}:${variant.inputFingerprint}:${qa.inputFingerprint}`,
         fingerprint: `${family.inputFingerprint}:${variant.inputFingerprint}:${qa.inputFingerprint}`,
         expectedRevision: current.revision,
-        postRenderReview: qa,
+        postRenderReview: stripBinaryMetadata(qa),
         visualApprovedPackage: qa.approvedPackage,
       });
     },
