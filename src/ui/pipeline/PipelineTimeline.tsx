@@ -15,8 +15,10 @@ const labels: Record<PipelineStageId, string> = {
 };
 export function PipelineTimeline({
   pipeline,
+  referenceState,
 }: {
   pipeline: WorkspacePipelineState;
+  referenceState?: "optional" | "uploading" | "ready" | "failed";
 }) {
   return (
     <ol className="pipeline-list">
@@ -38,7 +40,15 @@ export function PipelineTimeline({
             <div>
               <strong>{labels[id]}</strong>
               <small>
-                {status === "approved"
+                {id === "reference" && referenceState
+                  ? referenceState === "optional"
+                    ? "não fornecida / opcional"
+                    : referenceState === "uploading"
+                      ? "upload em andamento"
+                      : referenceState === "ready"
+                        ? "pronta"
+                        : "requer atenção"
+                  : status === "approved"
                   ? "concluída"
                   : status === "running"
                     ? "em andamento"

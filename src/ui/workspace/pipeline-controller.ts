@@ -145,9 +145,15 @@ export async function runDesignPipeline(input: {
       typeof ensureCreativeDirection
     >[0]["existingSession"],
   });
-  if (creative.status !== "ready")
-    throw new Error("A direção criativa não ficou pronta.");
   await persist("creative_direction", creative, creative.sessionId);
+  if (creative.status !== "ready")
+    throw new Error(
+      creative.failureReason === "insufficient_divergence"
+        ? "As rotas criativas ficaram semelhantes demais."
+        : creative.failureReason === "no_eligible_route"
+          ? "Nenhuma rota passou pelos critérios de direção criativa."
+          : "A geração das rotas criativas não passou pela validação estrutural.",
+    );
   if (input.draft.formatId === "meta_ads_family") {
     input.onStage("layout");
     const campaign = await createCampaignFamily({

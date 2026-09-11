@@ -12,8 +12,12 @@ import {
 } from "../../client/source-assets.js";
 import { IconButton } from "../primitives/Button.js";
 
-type FieldState = "idle" | SourceAssetUploadState | "available" | "failed";
-const stateLabel: Record<FieldState, string> = {
+export type SourceAssetFieldState =
+  | "idle"
+  | SourceAssetUploadState
+  | "available"
+  | "failed";
+const stateLabel: Record<SourceAssetFieldState, string> = {
   idle: "",
   hashing: "Preparando arquivo",
   checking: "Verificando arquivo existente",
@@ -30,6 +34,8 @@ export function SourceAssetField({
   value,
   onChange,
   onError,
+  fieldId = role,
+  onStateChange,
 }: {
   projectId: string;
   role: ProjectSourceAssetRole;
@@ -37,12 +43,20 @@ export function SourceAssetField({
   value?: ProjectSourceAssetSummary;
   onChange: (asset: ProjectSourceAssetSummary | undefined) => void;
   onError: (message: string) => void;
+  fieldId?: string;
+  onStateChange?: (fieldId: string, state: SourceAssetFieldState) => void;
 }) {
-  const [state, setState] = useState<FieldState>("idle"),
+  const [state, setStateValue] = useState<SourceAssetFieldState>(
+      value?.status === "available" ? "available" : "idle",
+    ),
     [preview, setPreview] = useState(""),
     localUrl = useRef(""),
     activeUpload = useRef<AbortController | undefined>(undefined),
     mounted = useRef(true);
+  const setState = (next: SourceAssetFieldState) => {
+    setStateValue(next);
+    onStateChange?.(fieldId, next);
+  };
   useEffect(() => {
     mounted.current = true;
     return () => {
@@ -50,7 +64,7 @@ export function SourceAssetField({
       activeUpload.current?.abort();
       if (localUrl.current) URL.revokeObjectURL(localUrl.current);
     };
-  }, []);
+  }, [projectId]);
   useEffect(() => {
     const controller = new AbortController();
     if (!value) {
@@ -90,6 +104,8 @@ export function SourceAssetField({
         },
       });
       if (!mounted.current || activeUpload.current !== controller) return;
+      if (asset.status !== "available")
+        throw new Error("Source asset backing was not durably finalized.");
       onChange(asset);
       setState("available");
       if (localUrl.current) {
@@ -116,6 +132,15 @@ export function SourceAssetField({
       if (activeUpload.current === controller) activeUpload.current = undefined;
     }
   }
+  function clearAttempt() {
+    activeUpload.current?.abort();
+    activeUpload.current = undefined;
+    if (localUrl.current) URL.revokeObjectURL(localUrl.current);
+    localUrl.current = "";
+    setPreview("");
+    setState("idle");
+    onChange(undefined);
+  }
   return (
     <div className="source-field">
       <span className="field__label">{label}</span>
@@ -132,7 +157,7 @@ export function SourceAssetField({
           </div>
           <IconButton
             label={`Remover ${label}`}
-            onClick={() => onChange(undefined)}
+            onClick={clearAttempt}
           >
             <X size={16} />
           </IconButton>
@@ -162,6 +187,11 @@ export function SourceAssetField({
         <span className={`upload-state upload-state--${state}`}>
           {stateLabel[state]}
         </span>
+      ) : null}
+      {state === "failed" && !value ? (
+        <button type="button" className="button button--ghost" onClick={clearAttempt}>
+          Limpar tentativa
+        </button>
       ) : null}
     </div>
   );

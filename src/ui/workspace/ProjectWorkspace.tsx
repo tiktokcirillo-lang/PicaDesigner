@@ -36,6 +36,7 @@ import {
   fingerprintWorkspaceInput,
   pipelineFromSnapshot,
   toWorkspaceInput,
+  sourceUploadGenerationBlock,
 } from "../state/workspace-logic.js";
 import { runDesignPipeline } from "./pipeline-controller.js";
 import { useToast } from "../primitives/Toast.js";
@@ -44,6 +45,8 @@ import {
   flushWorkspaceAutosave,
   workspaceFailureMessage,
 } from "./autosave-coordinator.js";
+import type { SourceAssetFieldState } from "../source-assets/SourceAssetField.js";
+import { MountedWorkspacePanel } from "./MountedWorkspacePanel.js";
 const leftTabs: [WorkspaceTab, string][] = [
     ["briefing", "Briefing"],
     ["reference", "Referência"],
@@ -98,6 +101,9 @@ export function ProjectWorkspace() {
       "idle" | "saving" | "saved" | "conflict" | "error"
     >("idle"),
     [error, setError] = useState(""),
+    [sourceUploadStates, setSourceUploadStates] = useState<
+      Record<string, SourceAssetFieldState>
+    >({}),
     [pipeline, setPipeline] = useState(
       () =>
         ({
@@ -124,6 +130,19 @@ export function ProjectWorkspace() {
     saveInFlight = useRef<Promise<void> | undefined>(undefined),
     pipelineRunning = useRef(false),
     { notify } = useToast();
+  const onUploadState = useCallback(
+    (fieldId: string, state: SourceAssetFieldState) =>
+      setSourceUploadStates((current) => ({ ...current, [fieldId]: state })),
+    [],
+  );
+  useEffect(() => {
+    if (draft.brandEnabled) return;
+    setSourceUploadStates((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([fieldId]) => !fieldId.startsWith("brand:")),
+      ),
+    );
+  }, [draft.brandEnabled]);
   const load = useCallback(
     async (signal?: AbortSignal) => {
       try {
@@ -232,6 +251,10 @@ export function ProjectWorkspace() {
             )?.productionAuthorityId,
           )
         : snapshot?.latestProductionAuthority?.status === "valid";
+  const uploadGate = sourceUploadGenerationBlock(sourceUploadStates),
+    hasPendingUpload = uploadGate.pending,
+    hasFailedUpload = uploadGate.failed,
+    generationBlockedByUpload = uploadGate.blocked;
   function change(patch: Partial<WorkspaceDraft>) {
     setDraft((current) => ({ ...current, ...patch }));
     if (snapshot?.workflow.render_session)
@@ -250,6 +273,14 @@ export function ProjectWorkspace() {
   }
   async function generate() {
     if (!snapshot || pipeline.running) return;
+    if (hasPendingUpload) {
+      setError("Aguarde a conclusão do upload.");
+      return;
+    }
+    if (hasFailedUpload) {
+      setError("Um upload requer atenção. Tente novamente ou limpe a tentativa.");
+      return;
+    }
     if (!draft.copyText.trim() && !draft.referenceAsset) {
       setError("Adicione uma copy ou referência antes de gerar.");
       return;
@@ -378,7 +409,7 @@ export function ProjectWorkspace() {
             <History size={15} />
             Histórico
           </Link>
-          <Button disabled={pipeline.running} onClick={generate}>
+          <Button disabled={pipeline.running || generationBlockedByUpload} onClick={generate}>
             {pipeline.running ? (
               <RefreshCw className="spin" size={16} />
             ) : (
@@ -392,6 +423,7 @@ export function ProjectWorkspace() {
                 ? "Atualizar design"
                 : "Gerar design"}
           </Button>
+          {hasPendingUpload ? <small>Aguarde a conclusão do upload.</small> : null}
         </div>
       </header>
       {saveStatus === "conflict" ? (
@@ -420,25 +452,30 @@ export function ProjectWorkspace() {
           ))}
         </nav>
         <div className="panel-scroll">
-          {leftTab === "briefing" ? (
+          <MountedWorkspacePanel active={leftTab === "briefing"}>
             <BriefPanel draft={draft} onChange={change} />
-          ) : leftTab === "reference" ? (
+          </MountedWorkspacePanel>
+          <MountedWorkspacePanel active={leftTab === "reference"}>
             <ReferencePanel
               projectId={projectId}
               draft={draft}
               onChange={change}
               onError={setError}
+              onUploadState={onUploadState}
             />
-          ) : leftTab === "brand" ? (
+          </MountedWorkspacePanel>
+          <MountedWorkspacePanel active={leftTab === "brand"}>
             <BrandPanel
               projectId={projectId}
               draft={draft}
               onChange={change}
               onError={setError}
+              onUploadState={onUploadState}
             />
-          ) : (
+          </MountedWorkspacePanel>
+          <MountedWorkspacePanel active={leftTab === "format"}>
             <FormatSelector draft={draft} onChange={change} />
-          )}
+          </MountedWorkspacePanel>
         </div>
       </aside>
       <ArtboardViewport
@@ -503,7 +540,20 @@ export function ProjectWorkspace() {
         </nav>
         <div className="panel-scroll">
           {rightTab === "pipeline" ? (
-            <PipelineTimeline pipeline={pipeline} />
+            <PipelineTimeline
+              pipeline={pipeline}
+              referenceState={
+                sourceUploadStates.reference === "failed"
+                  ? "failed"
+                  : ["hashing", "checking", "uploading", "finalizing"].includes(
+                        sourceUploadStates.reference ?? "idle",
+                      )
+                    ? "uploading"
+                    : draft.referenceAsset
+                      ? "ready"
+                      : "optional"
+              }
+            />
           ) : rightTab === "export" ? (
             <ExportPanel
               projectId={projectId}
@@ -542,6 +592,30 @@ export function ProjectWorkspace() {
                       workflow: Object.keys(snapshot.workflow),
                       authority:
                         snapshot.latestProductionAuthority?.status ?? "none",
+                      creativeDirection: (() => {
+                        const creative = snapshot.workflow.creative_direction as
+                          | {
+                              status?: string;
+                              failureReason?: string;
+                              routes?: unknown[];
+                              evaluations?: Array<{ eligible?: boolean; gateFailures?: string[]; weightedScore?: number }>;
+                              quality?: { routeDiversity?: number; overall?: number };
+                              cost?: number;
+                            }
+                          | undefined;
+                        return creative
+                          ? {
+                              status: creative.status,
+                              failureReason: creative.failureReason,
+                              routeCount: creative.routes?.length ?? 0,
+                              eligibleRouteCount: creative.evaluations?.filter((item) => item.eligible).length ?? 0,
+                              minimumDiversity: creative.quality?.routeDiversity,
+                              qualityScore: creative.quality?.overall,
+                              routes: creative.evaluations?.map((item) => ({ score: item.weightedScore, gateFailures: item.gateFailures })),
+                              stageCostUsd: creative.cost,
+                            }
+                          : undefined;
+                      })(),
                     },
                     null,
                     2,

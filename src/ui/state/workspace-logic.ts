@@ -8,6 +8,20 @@ import type {
   WorkspaceInputState,
   WorkspacePipelineState,
 } from "./workspace-types.js";
+import type { SourceAssetFieldState } from "../source-assets/SourceAssetField.js";
+export const sourceUploadGenerationBlock = (
+  states: Record<string, SourceAssetFieldState>,
+) => {
+  const values = Object.values(states);
+  const pending = values.some((state) =>
+    ["hashing", "checking", "uploading", "finalizing"].includes(state),
+  );
+  return {
+    pending,
+    failed: values.includes("failed"),
+    blocked: pending || values.includes("failed"),
+  };
+};
 export const formatContextFor = (id: string) =>
   id.startsWith("meta_ads_")
     ? { platform: "meta", usage: "advertising" }

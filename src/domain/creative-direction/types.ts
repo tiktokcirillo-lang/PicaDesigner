@@ -3,6 +3,7 @@ import type {AIUsageResult} from '../../infrastructure/ai/types.js';
 import type {ReferenceIntelligenceSession} from '../../application/reference-intelligence/index.js';
 
 export const CREATIVE_DIRECTION_SCHEMA_VERSION = '1.1.0' as const;
+export const CREATIVE_GOVERNANCE_POLICY_VERSION = '2.0.0' as const;
 export type CommunicationObjective = 'awareness'|'consideration'|'conversion'|'promotion'|'product_launch'|'education'|'trust'|'retention'|'announcement'|'event'|'brand_building'|'other';
 export interface SourcedFact<T> {value: T; source: 'explicit'|'inferred'; confidence: number}
 export interface AudienceContext {market?: string; country?: string; language?: string; industry?: string; role?: string; familiarity?: string; intent?: string}

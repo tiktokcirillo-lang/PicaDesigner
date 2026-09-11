@@ -23,6 +23,8 @@
     "persistence:cold-start-validation": "tsx src/infrastructure/project-persistence/cold-start.validation.ts",
     "workspace:validation": "tsx scripts/workspace-validation.ts",
     "workspace:test": "vitest run --environment jsdom",
+    "workspace:upload-lifecycle-validation": "vitest run src/ui/workspace/upload-lifecycle.test.tsx --environment jsdom",
+    "creative:governance-resilience-validation": "tsx src/domain/creative-direction/creative-direction.validation.ts && vitest run src/ui/workspace/creative-persistence.test.ts --environment jsdom",
     "e2e:campaign-smoke": "tsx scripts/e2e-campaign-smoke.ts",
     "e2e:campaign-runtime-parity": "tsx scripts/e2e-campaign-smoke.ts",
     "db:validate": "tsx scripts/db-validate.ts",
